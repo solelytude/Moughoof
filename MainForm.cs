@@ -12,8 +12,6 @@ public class WordEntry
 {
 public string Word { get; set; }
 public string Pronunciation { get; set; }
-
-```
     public WordEntry(string word, string pronunciation)
     {
         Word = word;
@@ -1333,4 +1331,5 @@ public class MainForm : Form
             }
         }
     }
+}
 }
