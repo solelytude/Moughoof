@@ -1,4 +1,3 @@
-```csharp
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,1182 +8,1329 @@ using System.Windows.Forms;
 
 namespace Moughoof
 {
-    public class WordEntry
-    {
-        public string Word { get; set; }
-        public string Pronunciation { get; set; }
+public class WordEntry
+{
+public string Word { get; set; }
+public string Pronunciation { get; set; }
 
-        public WordEntry(string word, string pronunciation)
-        {
-            Word = word;
-            Pronunciation = pronunciation;
-        }
+```
+    public WordEntry(string word, string pronunciation)
+    {
+        Word = word;
+        Pronunciation = pronunciation;
+    }
+}
+
+public class MainForm : Form
+{
+    private TextBox inputBox;
+    private Label pronunciationLabel;
+
+    private GroupBox matchBox;
+    private RadioButton firstRadio;
+    private RadioButton lastRadio;
+    private NumericUpDown matchCountBox;
+
+    private GroupBox sortBox;
+    private RadioButton alphabetRadio;
+    private RadioButton lengthRadio;
+
+    private Button searchButton;
+    private Label statusLabel;
+
+    private ListBox resultList;
+
+    private Button exportButton;
+    private Label databaseLabel;
+
+    private List<WordEntry> entries =
+        new List<WordEntry>();
+
+    private List<WordEntry> currentResults =
+        new List<WordEntry>();
+
+    private string currentDatabaseName = "Default";
+    private int currentDatabaseLineCount = 0;
+
+    private bool placeholderActive = true;
+
+    private ContextMenuStrip resultContextMenu;
+
+    // =====================================================
+    // Constructor
+    // =====================================================
+
+    public MainForm()
+    {
+        InitializeForm();
+        InitializeControls();
+        LoadDefaultDictionary();
     }
 
-    public class MainForm : Form
+    // =====================================================
+    // Form
+    // =====================================================
+
+    private void InitializeForm()
     {
-        private TextBox inputBox;
-        private Label pronunciationLabel;
+        Text = "Moughoof";
 
-        private GroupBox matchBox;
-        private RadioButton firstRadio;
-        private RadioButton lastRadio;
-        private NumericUpDown matchCountBox;
+        // +100 px compared with the previous version.
+        ClientSize = new Size(460, 650);
 
-        private GroupBox sortBox;
-        private RadioButton alphabetRadio;
-        private RadioButton lengthRadio;
+        MinimumSize =
+            new Size(460, 530);
 
-        private Button searchButton;
-        private Label statusLabel;
+        MaximumSize =
+            new Size(460, 2000);
 
-        private ListBox resultList;
+        MinimizeBox = true;
+        MaximizeBox = false;
 
-        private Button exportButton;
-        private Label databaseLabel;
+        FormBorderStyle =
+            FormBorderStyle.Sizable;
 
-        private List<WordEntry> entries = new List<WordEntry>();
-        private List<WordEntry> currentResults = new List<WordEntry>();
+        BackColor =
+            Color.FromArgb(32, 32, 32);
 
-        private string currentDatabaseName = "Default";
-        private int currentDatabaseLineCount = 0;
+        ForeColor = Color.White;
 
-        private bool placeholderActive = true;
+        Font =
+            new Font("Segoe UI", 9f);
 
-        private Font resultPersianFont;
-        private Font resultPronunciationFont;
-        private Color resultTextColor = Color.White;
+        // Enter works regardless of which control
+        // currently has focus.
+        KeyPreview = true;
+        KeyDown += MainForm_KeyDown;
+    }
 
-        private ContextMenuStrip resultContextMenu;
+    // =====================================================
+    // Controls
+    // =====================================================
 
-        public MainForm()
+    private void InitializeControls()
+    {
+        // -------------------------------------------------
+        // Input
+        // -------------------------------------------------
+
+        inputBox = new TextBox
         {
-            InitializeFonts();
-            InitializeForm();
-            InitializeControls();
-            LoadDefaultDictionary();
-        }
+            Location = new Point(15, 15),
+            Size = new Size(430, 34),
 
-        // =====================================================
-        // Initialization
-        // =====================================================
-
-        private void InitializeFonts()
-        {
-            resultPersianFont = new Font(
-                "Segoe UI",
-                11f,
-                FontStyle.Regular);
-
-            resultPronunciationFont = new Font(
-                "Segoe UI",
-                9.5f,
-                FontStyle.Regular);
-        }
-
-        private void InitializeForm()
-        {
-            Text = "Moughoof";
-
-            ClientSize = new Size(460, 650);
-            MinimumSize = new Size(460, 530);
-            MaximumSize = new Size(460, 2000);
-
-            MinimizeBox = true;
-            MaximizeBox = false;
-
-            FormBorderStyle = FormBorderStyle.Sizable;
-
-            BackColor = Color.FromArgb(32, 32, 32);
-            ForeColor = Color.White;
-
-            Font = new Font("Segoe UI", 9f);
-
-            // Allows Enter to work anywhere in the form.
-            KeyPreview = true;
-            KeyDown += MainForm_KeyDown;
-        }
-
-        private void InitializeControls()
-        {
-            // =================================================
-            // Input
-            // =================================================
-
-            inputBox = new TextBox
-            {
-                Location = new Point(15, 15),
-                Size = new Size(430, 34),
-                Font = new Font(
+            Font =
+                new Font(
                     "Segoe UI",
                     11.5f,
                     FontStyle.Bold),
-                BackColor = Color.FromArgb(45, 45, 45),
-                ForeColor = Color.Gray,
-                BorderStyle = BorderStyle.FixedSingle,
-                Text = "Input word",
-                RightToLeft = RightToLeft.No
-            };
 
-            inputBox.GotFocus += InputBox_GotFocus;
-            inputBox.LostFocus += InputBox_LostFocus;
-            inputBox.TextChanged += InputBox_TextChanged;
+            BackColor =
+                Color.FromArgb(45, 45, 45),
 
-            Controls.Add(inputBox);
+            ForeColor = Color.Gray,
 
-            // =================================================
-            // Pronunciation
-            // =================================================
+            BorderStyle =
+                BorderStyle.FixedSingle,
 
-            pronunciationLabel = new Label
-            {
-                Location = new Point(15, 53),
-                Size = new Size(430, 20),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.LightGray,
-                BackColor = Color.Transparent
-            };
+            Text = "Input word",
 
-            Controls.Add(pronunciationLabel);
+            RightToLeft =
+                RightToLeft.No
+        };
 
-            // =================================================
-            // MATCH group
-            // =================================================
+        inputBox.GotFocus +=
+            InputBox_GotFocus;
 
-            matchBox = new GroupBox
-            {
-                Location = new Point(15, 78),
-                Size = new Size(430, 58),
-                Text = "MATCH",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent
-            };
+        inputBox.LostFocus +=
+            InputBox_LostFocus;
 
-            firstRadio = new RadioButton
-            {
-                Location = new Point(12, 23),
-                AutoSize = true,
-                Text = "FIRST",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent
-            };
+        inputBox.TextChanged +=
+            InputBox_TextChanged;
 
-            lastRadio = new RadioButton
-            {
-                Location = new Point(85, 23),
-                AutoSize = true,
-                Text = "LAST",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent,
-                Checked = true
-            };
+        Controls.Add(inputBox);
 
-            matchCountBox = new NumericUpDown
-            {
-                Location = new Point(155, 20),
-                Size = new Size(48, 25),
-                Minimum = 1,
-                Maximum = 50,
-                Value = 2,
-                TextAlign = HorizontalAlignment.Center
-            };
+        // -------------------------------------------------
+        // Pronunciation
+        // -------------------------------------------------
 
-            matchBox.Controls.Add(firstRadio);
-            matchBox.Controls.Add(lastRadio);
-            matchBox.Controls.Add(matchCountBox);
+        pronunciationLabel = new Label
+        {
+            Location = new Point(15, 53),
+            Size = new Size(430, 20),
 
-            Controls.Add(matchBox);
+            AutoSize = false,
 
-            firstRadio.CheckedChanged += SortOrMatchChanged;
-            lastRadio.CheckedChanged += SortOrMatchChanged;
-            matchCountBox.ValueChanged += MatchCountBox_ValueChanged;
+            TextAlign =
+                ContentAlignment.MiddleLeft,
 
-            // =================================================
-            // SORT group
-            // =================================================
+            ForeColor =
+                Color.LightGray,
 
-            sortBox = new GroupBox
-            {
-                Location = new Point(220, 78),
-                Size = new Size(225, 58),
-                Text = "SORT",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent
-            };
+            BackColor =
+                Color.Transparent
+        };
 
-            alphabetRadio = new RadioButton
-            {
-                Location = new Point(12, 23),
-                AutoSize = true,
-                Text = "ALPHABET",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent,
-                Checked = true
-            };
+        Controls.Add(pronunciationLabel);
 
-            lengthRadio = new RadioButton
-            {
-                Location = new Point(112, 23),
-                AutoSize = true,
-                Text = "LENGTH",
-                ForeColor = Color.White,
-                BackColor = Color.Transparent
-            };
+        // -------------------------------------------------
+        // MATCH
+        // -------------------------------------------------
 
-            sortBox.Controls.Add(alphabetRadio);
-            sortBox.Controls.Add(lengthRadio);
+        matchBox = new GroupBox
+        {
+            Location = new Point(15, 78),
+            Size = new Size(190, 58),
 
-            Controls.Add(sortBox);
+            Text = "MATCH",
 
-            alphabetRadio.CheckedChanged += SortRadio_CheckedChanged;
-            lengthRadio.CheckedChanged += SortRadio_CheckedChanged;
+            ForeColor = Color.White,
 
-            // =================================================
-            // Search button
-            // =================================================
+            BackColor =
+                Color.Transparent
+        };
 
-            searchButton = new Button
-            {
-                Location = new Point(15, 145),
-                Size = new Size(100, 32),
-                Text = "SEARCH",
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White
-            };
+        firstRadio = new RadioButton
+        {
+            Location = new Point(12, 22),
+            Size = new Size(58, 24),
 
-            searchButton.FlatAppearance.BorderColor =
-                Color.FromArgb(90, 90, 90);
+            Text = "FIRST",
 
-            searchButton.Click += SearchButton_Click;
+            TextAlign =
+                ContentAlignment.MiddleLeft,
 
-            Controls.Add(searchButton);
+            ForeColor = Color.White,
 
-            // =================================================
-            // Results count
-            // =================================================
+            BackColor =
+                Color.Transparent
+        };
 
-            statusLabel = new Label
-            {
-                Location = new Point(125, 150),
-                Size = new Size(320, 25),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.LightGray,
-                Text = "0 Results"
-            };
+        lastRadio = new RadioButton
+        {
+            Location = new Point(72, 22),
+            Size = new Size(50, 24),
 
-            Controls.Add(statusLabel);
+            Text = "LAST",
 
-            // =================================================
-            // Result List
-            // =================================================
+            TextAlign =
+                ContentAlignment.MiddleLeft,
 
-            resultList = new ListBox
-            {
-                Location = new Point(15, 185),
-                Size = new Size(430, 390),
+            ForeColor = Color.White,
 
-                Anchor =
-                    AnchorStyles.Top |
-                    AnchorStyles.Bottom |
-                    AnchorStyles.Left |
-                    AnchorStyles.Right,
+            BackColor =
+                Color.Transparent,
 
-                BackColor = Color.FromArgb(40, 40, 40),
-                ForeColor = Color.White,
+            Checked = true
+        };
 
-                BorderStyle = BorderStyle.FixedSingle,
+        matchCountBox = new NumericUpDown
+        {
+            Location = new Point(130, 20),
+            Size = new Size(45, 25),
 
-                DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 27,
+            Minimum = 1,
+            Maximum = 50,
 
-                SelectionMode = SelectionMode.One,
+            Value = 2,
 
-                IntegralHeight = false
-            };
+            TextAlign =
+                HorizontalAlignment.Center
+        };
 
-            resultList.DrawItem += ResultList_DrawItem;
+        matchBox.Controls.Add(firstRadio);
+        matchBox.Controls.Add(lastRadio);
+        matchBox.Controls.Add(matchCountBox);
 
-            // Right click / Ctrl+C
-            resultList.MouseDown += ResultList_MouseDown;
-            resultList.KeyDown += ResultList_KeyDown;
+        Controls.Add(matchBox);
 
-            Controls.Add(resultList);
+        // -------------------------------------------------
+        // SORT
+        // -------------------------------------------------
 
-            InitializeContextMenu();
+        sortBox = new GroupBox
+        {
+            Location = new Point(215, 78),
+            Size = new Size(230, 58),
 
-            // =================================================
-            // Database label
-            // =================================================
+            Text = "SORT",
 
-            databaseLabel = new Label
-            {
-                Location = new Point(15, 585),
-                Size = new Size(250, 25),
+            ForeColor = Color.White,
 
-                Anchor =
-                    AnchorStyles.Bottom |
-                    AnchorStyles.Left,
+            BackColor =
+                Color.Transparent
+        };
 
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft,
+        alphabetRadio = new RadioButton
+        {
+            Location = new Point(12, 22),
+            Size = new Size(105, 24),
 
-                Text = "Database: Default, 0 words",
+            Text = "ALPHABET",
 
-                ForeColor = Color.LightSkyBlue,
-                BackColor = Color.Transparent,
+            TextAlign =
+                ContentAlignment.MiddleLeft,
 
-                Cursor = Cursors.Hand
-            };
+            ForeColor = Color.White,
 
-            databaseLabel.Font = new Font(
+            BackColor =
+                Color.Transparent,
+
+            Checked = true
+        };
+
+        lengthRadio = new RadioButton
+        {
+            Location = new Point(120, 22),
+            Size = new Size(75, 24),
+
+            Text = "LENGTH",
+
+            TextAlign =
+                ContentAlignment.MiddleLeft,
+
+            ForeColor = Color.White,
+
+            BackColor =
+                Color.Transparent
+        };
+
+        sortBox.Controls.Add(alphabetRadio);
+        sortBox.Controls.Add(lengthRadio);
+
+        Controls.Add(sortBox);
+
+        // Sort immediately when changed.
+        alphabetRadio.CheckedChanged +=
+            SortRadio_CheckedChanged;
+
+        lengthRadio.CheckedChanged +=
+            SortRadio_CheckedChanged;
+
+        // -------------------------------------------------
+        // Search
+        // -------------------------------------------------
+
+        searchButton = new Button
+        {
+            Location = new Point(15, 145),
+            Size = new Size(100, 32),
+
+            Text = "SEARCH",
+
+            FlatStyle =
+                FlatStyle.Flat,
+
+            BackColor =
+                Color.FromArgb(55, 55, 55),
+
+            ForeColor = Color.White
+        };
+
+        searchButton.FlatAppearance.BorderColor =
+            Color.FromArgb(90, 90, 90);
+
+        searchButton.Click +=
+            SearchButton_Click;
+
+        Controls.Add(searchButton);
+
+        // -------------------------------------------------
+        // Results count
+        // -------------------------------------------------
+
+        statusLabel = new Label
+        {
+            Location = new Point(125, 150),
+            Size = new Size(320, 25),
+
+            AutoSize = false,
+
+            TextAlign =
+                ContentAlignment.MiddleLeft,
+
+            ForeColor =
+                Color.LightGray,
+
+            Text = "0 Results"
+        };
+
+        Controls.Add(statusLabel);
+
+        // -------------------------------------------------
+        // Result List
+        // -------------------------------------------------
+
+        resultList = new ListBox
+        {
+            Location = new Point(15, 185),
+
+            // Height automatically expands with the form.
+            Size = new Size(430, 390),
+
+            Anchor =
+                AnchorStyles.Top |
+                AnchorStyles.Bottom |
+                AnchorStyles.Left |
+                AnchorStyles.Right,
+
+            BackColor =
+                Color.FromArgb(40, 40, 40),
+
+            ForeColor = Color.White,
+
+            BorderStyle =
+                BorderStyle.FixedSingle,
+
+            DrawMode =
+                DrawMode.OwnerDrawFixed,
+
+            // Font is one size larger than before.
+            ItemHeight = 28,
+
+            SelectionMode =
+                SelectionMode.One,
+
+            IntegralHeight = false
+        };
+
+        resultList.DrawItem +=
+            ResultList_DrawItem;
+
+        resultList.MouseDown +=
+            ResultList_MouseDown;
+
+        resultList.KeyDown +=
+            ResultList_KeyDown;
+
+        // Prevent the normal ListBox double-click
+        // behavior from doing anything.
+        resultList.DoubleClick +=
+            ResultList_DoubleClick;
+
+        Controls.Add(resultList);
+
+        InitializeContextMenu();
+
+        // -------------------------------------------------
+        // Database label
+        // -------------------------------------------------
+
+        databaseLabel = new Label
+        {
+            Location = new Point(15, 585),
+
+            Size = new Size(300, 25),
+
+            Anchor =
+                AnchorStyles.Bottom |
+                AnchorStyles.Left,
+
+            AutoSize = false,
+
+            TextAlign =
+                ContentAlignment.MiddleLeft,
+
+            Text =
+                "Database: Default, 0 words",
+
+            ForeColor =
+                Color.LightSkyBlue,
+
+            BackColor =
+                Color.Transparent,
+
+            Cursor =
+                Cursors.Hand
+        };
+
+        databaseLabel.Font =
+            new Font(
                 databaseLabel.Font,
                 FontStyle.Underline);
 
-            databaseLabel.Click += DatabaseLabel_Click;
+        databaseLabel.Click +=
+            DatabaseLabel_Click;
 
-            Controls.Add(databaseLabel);
+        Controls.Add(databaseLabel);
 
-            // =================================================
-            // Export button
-            // =================================================
+        // -------------------------------------------------
+        // Export
+        // -------------------------------------------------
 
-            exportButton = new Button
-            {
-                Location = new Point(365, 582),
-                Size = new Size(80, 32),
-
-                Anchor =
-                    AnchorStyles.Bottom |
-                    AnchorStyles.Right,
-
-                Text = "EXPORT",
-
-                FlatStyle = FlatStyle.Flat,
-
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White
-            };
-
-            exportButton.FlatAppearance.BorderColor =
-                Color.FromArgb(90, 90, 90);
-
-            exportButton.Click += ExportButton_Click;
-
-            Controls.Add(exportButton);
-
-            UpdateBottomControls();
-        }
-
-        // =====================================================
-        // Bottom control positioning
-        // =====================================================
-
-        protected override void OnResize(EventArgs e)
+        exportButton = new Button
         {
-            base.OnResize(e);
-            UpdateBottomControls();
-        }
+            Location = new Point(365, 582),
 
-        private void UpdateBottomControls()
+            Size = new Size(80, 32),
+
+            Anchor =
+                AnchorStyles.Bottom |
+                AnchorStyles.Right,
+
+            Text = "EXPORT",
+
+            FlatStyle =
+                FlatStyle.Flat,
+
+            BackColor =
+                Color.FromArgb(55, 55, 55),
+
+            ForeColor = Color.White
+        };
+
+        exportButton.FlatAppearance.BorderColor =
+            Color.FromArgb(90, 90, 90);
+
+        exportButton.Click +=
+            ExportButton_Click;
+
+        Controls.Add(exportButton);
+
+        UpdateBottomControls();
+    }
+
+    // =====================================================
+    // Bottom controls
+    // =====================================================
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        UpdateBottomControls();
+    }
+
+    private void UpdateBottomControls()
+    {
+        if (databaseLabel == null ||
+            exportButton == null)
         {
-            if (databaseLabel == null || exportButton == null)
-                return;
-
-            int bottomY = ClientSize.Height - 43;
-
-            databaseLabel.Location =
-                new Point(15, bottomY);
-
-            exportButton.Location =
-                new Point(
-                    ClientSize.Width - 95,
-                    bottomY - 3);
+            return;
         }
 
-        // =====================================================
-        // Global Enter
-        // =====================================================
+        int bottomY =
+            ClientSize.Height - 43;
 
-        private void MainForm_KeyDown(
-            object sender,
-            KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                Search();
+        databaseLabel.Location =
+            new Point(
+                15,
+                bottomY);
 
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-        }
+        exportButton.Location =
+            new Point(
+                ClientSize.Width - 95,
+                bottomY - 3);
+    }
 
-        // =====================================================
-        // Input
-        // =====================================================
+    // =====================================================
+    // Global Enter
+    // =====================================================
 
-        private void InputBox_GotFocus(
-            object sender,
-            EventArgs e)
-        {
-            if (placeholderActive)
-            {
-                placeholderActive = false;
-
-                inputBox.Clear();
-
-                inputBox.ForeColor = Color.White;
-                inputBox.RightToLeft = RightToLeft.Yes;
-            }
-        }
-
-        private void InputBox_LostFocus(
-            object sender,
-            EventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(inputBox.Text))
-            {
-                placeholderActive = true;
-
-                inputBox.Text = "Input word";
-
-                inputBox.ForeColor = Color.Gray;
-                inputBox.RightToLeft = RightToLeft.No;
-            }
-        }
-
-        private void InputBox_TextChanged(
-            object sender,
-            EventArgs e)
-        {
-            if (placeholderActive)
-            {
-                pronunciationLabel.Text = "";
-                return;
-            }
-
-            string word = inputBox.Text.Trim();
-
-            if (word.Length == 0)
-            {
-                pronunciationLabel.Text = "";
-                return;
-            }
-
-            string pronunciation =
-                FindPronunciation(word);
-
-            pronunciationLabel.Text = pronunciation;
-        }
-
-        // =====================================================
-        // Match settings
-        // =====================================================
-
-        private void SortOrMatchChanged(
-            object sender,
-            EventArgs e)
-        {
-            // Do not search automatically when changing
-            // FIRST/LAST. Search remains button/Enter driven.
-        }
-
-        private void MatchCountBox_ValueChanged(
-            object sender,
-            EventArgs e)
-        {
-            // Search remains explicit.
-        }
-
-        // =====================================================
-        // Sorting
-        // =====================================================
-
-        private void SortRadio_CheckedChanged(
-            object sender,
-            EventArgs e)
-        {
-            if (!((RadioButton)sender).Checked)
-                return;
-
-            // Sort immediately, without another search.
-            SortCurrentResults();
-            DisplayResults();
-        }
-
-        private void SortCurrentResults()
-        {
-            if (currentResults == null)
-                return;
-
-            if (alphabetRadio.Checked)
-            {
-                currentResults.Sort(CompareAlphabet);
-            }
-            else
-            {
-                currentResults.Sort(CompareLength);
-            }
-        }
-
-        private int CompareAlphabet(
-            WordEntry a,
-            WordEntry b)
-        {
-            return CultureInfo
-                .GetCultureInfo("fa-IR")
-                .CompareInfo
-                .Compare(
-                    a.Word,
-                    b.Word,
-                    CompareOptions.StringSort);
-        }
-
-        private int CompareLength(
-            WordEntry a,
-            WordEntry b)
-        {
-            int result =
-                a.Word.Length.CompareTo(b.Word.Length);
-
-            if (result != 0)
-                return result;
-
-            return CompareAlphabet(a, b);
-        }
-
-        // =====================================================
-        // Search
-        // =====================================================
-
-        private void SearchButton_Click(
-            object sender,
-            EventArgs e)
+    private void MainForm_KeyDown(
+        object sender,
+        KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Enter)
         {
             Search();
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    // =====================================================
+    // Input
+    // =====================================================
+
+    private void InputBox_GotFocus(
+        object sender,
+        EventArgs e)
+    {
+        if (placeholderActive)
+        {
+            placeholderActive = false;
+
+            inputBox.Clear();
+
+            inputBox.ForeColor =
+                Color.White;
+
+            inputBox.RightToLeft =
+                RightToLeft.Yes;
+        }
+    }
+
+    private void InputBox_LostFocus(
+        object sender,
+        EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(
+            inputBox.Text))
+        {
+            placeholderActive = true;
+
+            inputBox.Text =
+                "Input word";
+
+            inputBox.ForeColor =
+                Color.Gray;
+
+            inputBox.RightToLeft =
+                RightToLeft.No;
+        }
+    }
+
+    private void InputBox_TextChanged(
+        object sender,
+        EventArgs e)
+    {
+        if (placeholderActive)
+        {
+            pronunciationLabel.Text = "";
+            return;
         }
 
-        private void Search()
+        string word =
+            inputBox.Text.Trim();
+
+        if (word.Length == 0)
         {
-            if (placeholderActive)
-                return;
+            pronunciationLabel.Text = "";
+            return;
+        }
 
-            string inputWord =
-                inputBox.Text.Trim();
+        pronunciationLabel.Text =
+            FindPronunciation(word);
+    }
 
-            if (inputWord.Length == 0)
-                return;
+    // =====================================================
+    // Search
+    // =====================================================
 
-            string pronunciation =
-                FindPronunciation(inputWord);
+    private void SearchButton_Click(
+        object sender,
+        EventArgs e)
+    {
+        Search();
+    }
 
-            pronunciationLabel.Text =
-                pronunciation;
+    private void Search()
+    {
+        if (placeholderActive)
+            return;
 
-            currentResults.Clear();
+        string inputWord =
+            inputBox.Text.Trim();
 
-            if (pronunciation.Length == 0)
+        if (inputWord.Length == 0)
+            return;
+
+        string pronunciation =
+            FindPronunciation(inputWord);
+
+        pronunciationLabel.Text =
+            pronunciation;
+
+        currentResults.Clear();
+
+        if (pronunciation.Length == 0)
+        {
+            DisplayResults();
+            return;
+        }
+
+        pronunciation =
+            NormalizePronunciation(
+                pronunciation);
+
+        int count =
+            (int)matchCountBox.Value;
+
+        string target;
+
+        if (firstRadio.Checked)
+        {
+            target =
+                pronunciation.Length <= count
+                    ? pronunciation
+                    : pronunciation.Substring(
+                        0,
+                        count);
+        }
+        else
+        {
+            target =
+                pronunciation.Length <= count
+                    ? pronunciation
+                    : pronunciation.Substring(
+                        pronunciation.Length - count,
+                        count);
+        }
+
+        string normalizedInput =
+            NormalizePersianWord(inputWord);
+
+        foreach (WordEntry entry in entries)
+        {
+            // Never include the searched word itself.
+            if (string.Equals(
+                NormalizePersianWord(entry.Word),
+                normalizedInput,
+                StringComparison.Ordinal))
             {
-                DisplayResults();
-                return;
+                continue;
             }
 
-            pronunciation =
-                NormalizePronunciation(pronunciation);
+            string entryPronunciation =
+                NormalizePronunciation(
+                    entry.Pronunciation);
 
-            int count =
-                (int)matchCountBox.Value;
+            if (entryPronunciation.Length == 0)
+                continue;
 
-            string target;
+            string candidate;
 
             if (firstRadio.Checked)
             {
-                target =
-                    pronunciation.Length <= count
-                        ? pronunciation
-                        : pronunciation.Substring(0, count);
+                candidate =
+                    entryPronunciation.Length <= count
+                        ? entryPronunciation
+                        : entryPronunciation.Substring(
+                            0,
+                            count);
             }
             else
             {
-                target =
-                    pronunciation.Length <= count
-                        ? pronunciation
-                        : pronunciation.Substring(
-                            pronunciation.Length - count,
+                candidate =
+                    entryPronunciation.Length <= count
+                        ? entryPronunciation
+                        : entryPronunciation.Substring(
+                            entryPronunciation.Length - count,
                             count);
             }
 
-            string normalizedInput =
-                NormalizePersianWord(inputWord);
-
-            foreach (WordEntry entry in entries)
+            // Case-sensitive comparison.
+            if (string.Equals(
+                candidate,
+                target,
+                StringComparison.Ordinal))
             {
-                // Do not show the input word itself.
-                if (NormalizePersianWord(entry.Word) ==
-                    normalizedInput)
-                {
-                    continue;
-                }
-
-                string entryPronunciation =
-                    NormalizePronunciation(
-                        entry.Pronunciation);
-
-                if (entryPronunciation.Length == 0)
-                    continue;
-
-                string candidate;
-
-                if (firstRadio.Checked)
-                {
-                    candidate =
-                        entryPronunciation.Length <= count
-                            ? entryPronunciation
-                            : entryPronunciation.Substring(
-                                0,
-                                count);
-                }
-                else
-                {
-                    candidate =
-                        entryPronunciation.Length <= count
-                            ? entryPronunciation
-                            : entryPronunciation.Substring(
-                                entryPronunciation.Length - count,
-                                count);
-                }
-
-                // IMPORTANT:
-                // Ordinal = case-sensitive.
-                if (string.Equals(
-                    candidate,
-                    target,
-                    StringComparison.Ordinal))
-                {
-                    currentResults.Add(entry);
-                }
+                currentResults.Add(entry);
             }
-
-            SortCurrentResults();
-            DisplayResults();
         }
 
-        // =====================================================
-        // Persian word lookup
-        // =====================================================
+        SortCurrentResults();
+        DisplayResults();
+    }
 
-        private string FindPronunciation(
-            string inputWord)
+    // =====================================================
+    // Persian lookup
+    // =====================================================
+
+    private string FindPronunciation(
+        string inputWord)
+    {
+        string normalizedInput =
+            NormalizePersianWord(inputWord);
+
+        foreach (WordEntry entry in entries)
         {
-            string normalizedInput =
-                NormalizePersianWord(inputWord);
+            string normalizedEntry =
+                NormalizePersianWord(entry.Word);
 
-            foreach (WordEntry entry in entries)
+            if (string.Equals(
+                normalizedEntry,
+                normalizedInput,
+                StringComparison.Ordinal))
             {
-                string normalizedEntry =
-                    NormalizePersianWord(entry.Word);
-
-                if (string.Equals(
-                    normalizedEntry,
-                    normalizedInput,
-                    StringComparison.Ordinal))
-                {
-                    return entry.Pronunciation;
-                }
+                return entry.Pronunciation;
             }
+        }
 
+        return "";
+    }
+
+    // =====================================================
+    // Persian normalization
+    // =====================================================
+
+    private string NormalizePersianWord(
+        string text)
+    {
+        if (string.IsNullOrEmpty(text))
             return "";
+
+        return text
+            .Replace(" ", "")
+            .Replace("\u200C", "");
+    }
+
+    // =====================================================
+    // Pronunciation normalization
+    // =====================================================
+
+    private string NormalizePronunciation(
+        string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "";
+
+        StringBuilder result =
+            new StringBuilder();
+
+        char previous = '\0';
+
+        foreach (char c in text)
+        {
+            // Dictionary notation uses repeated Latin
+            // characters for shadda.
+            //
+            // Case remains significant:
+            // yy collapses, yY does not.
+            if (c == previous)
+                continue;
+
+            result.Append(c);
+            previous = c;
         }
 
-        // =====================================================
-        // Persian normalization
-        // =====================================================
+        return result.ToString();
+    }
 
-        private string NormalizePersianWord(
-            string text)
+    // =====================================================
+    // Sorting
+    // =====================================================
+
+    private void SortRadio_CheckedChanged(
+        object sender,
+        EventArgs e)
+    {
+        RadioButton radio =
+            sender as RadioButton;
+
+        if (radio == null ||
+            !radio.Checked)
         {
-            if (string.IsNullOrEmpty(text))
-                return "";
-
-            return text
-                .Replace(" ", "")
-                .Replace("\u200C", "");
+            return;
         }
 
-        // =====================================================
-        // Pronunciation normalization
-        // =====================================================
+        // Immediate sorting of the current results.
+        SortCurrentResults();
+        DisplayResults();
+    }
 
-        private string NormalizePronunciation(
-            string text)
+    private void SortCurrentResults()
+    {
+        if (currentResults == null)
+            return;
+
+        if (alphabetRadio.Checked)
         {
-            if (string.IsNullOrEmpty(text))
-                return "";
+            currentResults.Sort(
+                CompareAlphabet);
+        }
+        else
+        {
+            currentResults.Sort(
+                CompareLength);
+        }
+    }
 
-            StringBuilder result =
-                new StringBuilder();
+    private int CompareAlphabet(
+        WordEntry a,
+        WordEntry b)
+    {
+        return CultureInfo
+            .GetCultureInfo("fa-IR")
+            .CompareInfo
+            .Compare(
+                a.Word,
+                b.Word,
+                CompareOptions.StringSort);
+    }
 
-            char previous = '\0';
+    private int CompareLength(
+        WordEntry a,
+        WordEntry b)
+    {
+        int result =
+            a.Word.Length.CompareTo(
+                b.Word.Length);
 
-            foreach (char c in text)
+        if (result != 0)
+            return result;
+
+        return CompareAlphabet(a, b);
+    }
+
+    // =====================================================
+    // Display results
+    // =====================================================
+
+    private void DisplayResults()
+    {
+        resultList.BeginUpdate();
+
+        try
+        {
+            resultList.Items.Clear();
+
+            foreach (WordEntry entry
+                in currentResults)
             {
-                // Used for the dictionary's shadda notation.
-                // Case is deliberately preserved.
-                if (c == previous)
-                    continue;
-
-                result.Append(c);
-                previous = c;
+                resultList.Items.Add(entry);
             }
 
-            return result.ToString();
+            statusLabel.Text =
+                currentResults.Count +
+                " Results";
+        }
+        finally
+        {
+            resultList.EndUpdate();
+        }
+    }
+
+    // =====================================================
+    // Result drawing
+    // =====================================================
+
+    private void ResultList_DrawItem(
+        object sender,
+        DrawItemEventArgs e)
+    {
+        if (e.Index < 0 ||
+            e.Index >= resultList.Items.Count)
+        {
+            return;
         }
 
-        // =====================================================
-        // Display results
-        // =====================================================
+        WordEntry entry =
+            (WordEntry)resultList.Items[
+                e.Index];
 
-        private void DisplayResults()
+        bool selected =
+            (e.State &
+             DrawItemState.Selected) != 0;
+
+        Color background;
+
+        if (selected)
         {
-            resultList.BeginUpdate();
-
-            try
-            {
-                resultList.Items.Clear();
-
-                foreach (WordEntry entry in currentResults)
-                {
-                    resultList.Items.Add(entry);
-                }
-
-                statusLabel.Text =
-                    currentResults.Count +
-                    " Results";
-            }
-            finally
-            {
-                resultList.EndUpdate();
-            }
+            background =
+                Color.FromArgb(
+                    75,
+                    75,
+                    75);
+        }
+        else if (e.Index % 2 == 0)
+        {
+            background =
+                Color.FromArgb(
+                    40,
+                    40,
+                    40);
+        }
+        else
+        {
+            background =
+                Color.FromArgb(
+                    56,
+                    56,
+                    56);
         }
 
-        // =====================================================
-        // Owner drawn ListBox
-        // =====================================================
-
-        private void ResultList_DrawItem(
-            object sender,
-            DrawItemEventArgs e)
+        using (SolidBrush brush =
+            new SolidBrush(background))
         {
-            if (e.Index < 0 ||
-                e.Index >= resultList.Items.Count)
-            {
-                return;
-            }
+            e.Graphics.FillRectangle(
+                brush,
+                e.Bounds);
+        }
 
-            WordEntry entry =
-                (WordEntry)resultList.Items[e.Index];
+        int totalWidth =
+            e.Bounds.Width;
 
-            bool selected =
-                (e.State & DrawItemState.Selected) != 0;
+        int persianWidth =
+            (int)(totalWidth * 0.60);
 
-            Color background;
+        Rectangle persianRect =
+            new Rectangle(
+                e.Bounds.X + 6,
+                e.Bounds.Y,
+                persianWidth - 10,
+                e.Bounds.Height);
 
-            if (selected)
-            {
-                background =
-                    Color.FromArgb(75, 75, 75);
-            }
-            else if (e.Index % 2 == 0)
-            {
-                background =
-                    Color.FromArgb(40, 40, 40);
-            }
-            else
-            {
-                background =
-                    Color.FromArgb(56, 56, 56);
-            }
+        Rectangle pronunciationRect =
+            new Rectangle(
+                e.Bounds.X +
+                persianWidth + 2,
+                e.Bounds.Y,
+                totalWidth -
+                persianWidth - 8,
+                e.Bounds.Height);
 
-            using (SolidBrush brush =
-                new SolidBrush(background))
-            {
-                e.Graphics.FillRectangle(
-                    brush,
-                    e.Bounds);
-            }
-
-            int totalWidth =
-                e.Bounds.Width;
-
-            int persianWidth =
-                (int)(totalWidth * 0.60);
-
-            Rectangle persianRect =
-                new Rectangle(
-                    e.Bounds.X + 6,
-                    e.Bounds.Y,
-                    persianWidth - 10,
-                    e.Bounds.Height);
-
-            Rectangle pronunciationRect =
-                new Rectangle(
-                    e.Bounds.X + persianWidth + 2,
-                    e.Bounds.Y,
-                    totalWidth - persianWidth - 8,
-                    e.Bounds.Height);
-
+        using (Font persianFont =
+            new Font(
+                "Segoe UI",
+                11f,
+                FontStyle.Regular))
+        {
             TextRenderer.DrawText(
                 e.Graphics,
                 entry.Word,
-                resultPersianFont,
+                persianFont,
                 persianRect,
-                resultTextColor,
+                Color.White,
                 TextFormatFlags.Right |
                 TextFormatFlags.VerticalCenter |
                 TextFormatFlags.NoPadding);
+        }
 
+        using (Font pronunciationFont =
+            new Font(
+                "Segoe UI",
+                9.5f,
+                FontStyle.Regular))
+        {
             TextRenderer.DrawText(
                 e.Graphics,
                 entry.Pronunciation,
-                resultPronunciationFont,
+                pronunciationFont,
                 pronunciationRect,
-                resultTextColor,
+                Color.White,
                 TextFormatFlags.Left |
                 TextFormatFlags.VerticalCenter |
                 TextFormatFlags.NoPadding);
-
-            e.DrawFocusRectangle();
         }
 
-        // =====================================================
-        // Copy / context menu
-        // =====================================================
+        e.DrawFocusRectangle();
+    }
 
-        private void InitializeContextMenu()
-        {
-            resultContextMenu =
-                new ContextMenuStrip();
+    // =====================================================
+    // Copy
+    // =====================================================
 
-            ToolStripMenuItem copyItem =
-                new ToolStripMenuItem("Copy");
+    private void InitializeContextMenu()
+    {
+        resultContextMenu =
+            new ContextMenuStrip();
 
-            copyItem.Click +=
-                delegate
-                {
-                    CopySelectedPersianWord();
-                };
+        ToolStripMenuItem copyItem =
+            new ToolStripMenuItem("Copy");
 
-            resultContextMenu.Items.Add(copyItem);
-
-            resultList.ContextMenuStrip =
-                resultContextMenu;
-        }
-
-        private void ResultList_MouseDown(
-            object sender,
-            MouseEventArgs e)
-        {
-            if (e.Button != MouseButtons.Right)
-                return;
-
-            int index =
-                resultList.IndexFromPoint(e.Location);
-
-            if (index >= 0 &&
-                index < resultList.Items.Count)
-            {
-                resultList.SelectedIndex = index;
-            }
-        }
-
-        private void ResultList_KeyDown(
-            object sender,
-            KeyEventArgs e)
-        {
-            if (e.Control &&
-                e.KeyCode == Keys.C)
+        copyItem.Click +=
+            delegate
             {
                 CopySelectedPersianWord();
+            };
 
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-        }
+        resultContextMenu.Items.Add(
+            copyItem);
 
-        private void CopySelectedPersianWord()
+        resultList.ContextMenuStrip =
+            resultContextMenu;
+    }
+
+    private void ResultList_MouseDown(
+        object sender,
+        MouseEventArgs e)
+    {
+        if (e.Button != MouseButtons.Right)
+            return;
+
+        int index =
+            resultList.IndexFromPoint(
+                e.Location);
+
+        if (index >= 0 &&
+            index < resultList.Items.Count)
         {
-            if (resultList.SelectedIndex < 0)
-                return;
-
-            WordEntry entry =
-                resultList.SelectedItem as WordEntry;
-
-            if (entry == null)
-                return;
-
-            Clipboard.SetText(entry.Word);
+            resultList.SelectedIndex =
+                index;
         }
+    }
 
-        // =====================================================
-        // Database
-        // =====================================================
-
-        private void LoadDefaultDictionary()
+    private void ResultList_KeyDown(
+        object sender,
+        KeyEventArgs e)
+    {
+        if (e.Control &&
+            e.KeyCode == Keys.C)
         {
-            string path =
-                Path.Combine(
-                    Application.StartupPath,
-                    "PS.txt");
+            CopySelectedPersianWord();
 
-            if (File.Exists(path))
-            {
-                LoadDictionary(
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    private void ResultList_DoubleClick(
+        object sender,
+        EventArgs e)
+    {
+        // Deliberately empty.
+        // ListBox remains non-editable.
+    }
+
+    private void CopySelectedPersianWord()
+    {
+        if (resultList.SelectedIndex < 0)
+            return;
+
+        WordEntry entry =
+            resultList.SelectedItem
+            as WordEntry;
+
+        if (entry == null)
+            return;
+
+        Clipboard.SetText(
+            entry.Word);
+    }
+
+    // =====================================================
+    // Database
+    // =====================================================
+
+    private void LoadDefaultDictionary()
+    {
+        string path =
+            Path.Combine(
+                Application.StartupPath,
+                "PS.txt");
+
+        if (File.Exists(path))
+        {
+            LoadDictionary(
+                path,
+                "Default");
+        }
+        else
+        {
+            entries.Clear();
+            currentResults.Clear();
+
+            currentDatabaseName =
+                "Default";
+
+            currentDatabaseLineCount =
+                0;
+
+            UpdateDatabaseLabel();
+            DisplayResults();
+        }
+    }
+
+    private bool LoadDictionary(
+        string path,
+        string databaseName)
+    {
+        List<WordEntry> newEntries =
+            new List<WordEntry>();
+
+        int lineCount = 0;
+
+        try
+        {
+            using (StreamReader reader =
+                new StreamReader(
                     path,
-                    "Default");
-            }
-            else
+                    Encoding.UTF8,
+                    true))
             {
-                entries.Clear();
+                string line;
 
-                currentResults.Clear();
+                while ((line =
+                    reader.ReadLine()) != null)
+                {
+                    lineCount++;
 
-                currentDatabaseName = "Default";
-                currentDatabaseLineCount = 0;
+                    if (string.IsNullOrWhiteSpace(
+                        line))
+                    {
+                        continue;
+                    }
 
-                UpdateDatabaseLabel();
-                DisplayResults();
+                    string[] parts =
+                        line.Split(
+                            new[] { '\t' },
+                            2);
+
+                    if (parts.Length != 2)
+                        continue;
+
+                    string word =
+                        parts[0];
+
+                    string pronunciation =
+                        parts[1];
+
+                    if (word.Length == 0 ||
+                        pronunciation.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    newEntries.Add(
+                        new WordEntry(
+                            word,
+                            pronunciation));
+                }
             }
         }
-
-        private bool LoadDictionary(
-            string path,
-            string databaseName)
+        catch (Exception ex)
         {
-            List<WordEntry> newEntries =
-                new List<WordEntry>();
+            MessageBox.Show(
+                "Could not load database.\r\n\r\n" +
+                ex.Message,
+                "Moughoof",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
 
-            int lineCount = 0;
+            return false;
+        }
+
+        // Replace the active database only after
+        // the complete file has loaded successfully.
+        entries = newEntries;
+
+        currentDatabaseName =
+            databaseName;
+
+        currentDatabaseLineCount =
+            lineCount;
+
+        // Clear old results.
+        currentResults.Clear();
+
+        UpdateDatabaseLabel();
+        DisplayResults();
+
+        // Refresh pronunciation from the NEW database.
+        if (!placeholderActive &&
+            !string.IsNullOrWhiteSpace(
+                inputBox.Text))
+        {
+            pronunciationLabel.Text =
+                FindPronunciation(
+                    inputBox.Text.Trim());
+        }
+
+        return true;
+    }
+
+    private void UpdateDatabaseLabel()
+    {
+        databaseLabel.Text =
+            "Database: " +
+            currentDatabaseName +
+            ", " +
+            currentDatabaseLineCount +
+            " words";
+    }
+
+    private void DatabaseLabel_Click(
+        object sender,
+        EventArgs e)
+    {
+        using (OpenFileDialog dialog =
+            new OpenFileDialog())
+        {
+            dialog.Title =
+                "Select dictionary database";
+
+            dialog.Filter =
+                "Text files (*.txt)|*.txt|" +
+                "All files (*.*)|*.*";
+
+            dialog.Multiselect = false;
+
+            if (dialog.ShowDialog() !=
+                DialogResult.OK)
+            {
+                return;
+            }
+
+            string databaseName =
+                Path.GetFileNameWithoutExtension(
+                    dialog.FileName);
+
+            LoadDictionary(
+                dialog.FileName,
+                databaseName);
+        }
+    }
+
+    // =====================================================
+    // Export
+    // =====================================================
+
+    private void ExportButton_Click(
+        object sender,
+        EventArgs e)
+    {
+        if (currentResults.Count == 0)
+        {
+            MessageBox.Show(
+                "There are no results to export.",
+                "Moughoof",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            return;
+        }
+
+        using (SaveFileDialog dialog =
+            new SaveFileDialog())
+        {
+            dialog.Title =
+                "Export results";
+
+            dialog.Filter =
+                "Text files (*.txt)|*.txt";
+
+            dialog.FileName =
+                "Moughoof-results.txt";
+
+            if (dialog.ShowDialog() !=
+                DialogResult.OK)
+            {
+                return;
+            }
 
             try
             {
-                using (StreamReader reader =
-                    new StreamReader(
-                        path,
-                        Encoding.UTF8,
-                        true))
+                using (StreamWriter writer =
+                    new StreamWriter(
+                        dialog.FileName,
+                        false,
+                        new UTF8Encoding(false)))
                 {
-                    string line;
+                    writer.WriteLine(
+                        "Word\tPronunciation");
 
-                    while ((line = reader.ReadLine()) != null)
+                    foreach (
+                        WordEntry entry
+                        in currentResults)
                     {
-                        lineCount++;
-
-                        if (string.IsNullOrWhiteSpace(line))
-                            continue;
-
-                        string[] parts =
-                            line.Split(
-                                new[] { '\t' },
-                                2);
-
-                        if (parts.Length != 2)
-                            continue;
-
-                        string word =
-                            parts[0];
-
-                        string pronunciation =
-                            parts[1];
-
-                        if (word.Length == 0 ||
-                            pronunciation.Length == 0)
-                        {
-                            continue;
-                        }
-
-                        newEntries.Add(
-                            new WordEntry(
-                                word,
-                                pronunciation));
+                        writer.WriteLine(
+                            entry.Word +
+                            "\t" +
+                            entry.Pronunciation);
                     }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    "Could not load database.\r\n\r\n" +
+                    "Could not export results.\r\n\r\n" +
                     ex.Message,
                     "Moughoof",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-
-                return false;
             }
-
-            // Replace the active database only after
-            // successful loading.
-            entries = newEntries;
-
-            currentDatabaseName =
-                databaseName;
-
-            currentDatabaseLineCount =
-                lineCount;
-
-            currentResults.Clear();
-
-            UpdateDatabaseLabel();
-            DisplayResults();
-
-            // If a word is already entered, refresh its
-            // pronunciation using the new database.
-            if (!placeholderActive &&
-                !string.IsNullOrWhiteSpace(
-                    inputBox.Text))
-            {
-                pronunciationLabel.Text =
-                    FindPronunciation(
-                        inputBox.Text.Trim());
-            }
-
-            return true;
-        }
-
-        private void UpdateDatabaseLabel()
-        {
-            databaseLabel.Text =
-                "Database: " +
-                currentDatabaseName +
-                ", " +
-                currentDatabaseLineCount +
-                " words";
-        }
-
-        private void DatabaseLabel_Click(
-            object sender,
-            EventArgs e)
-        {
-            using (OpenFileDialog dialog =
-                new OpenFileDialog())
-            {
-                dialog.Title =
-                    "Select dictionary database";
-
-                dialog.Filter =
-                    "Text files (*.txt)|*.txt|" +
-                    "All files (*.*)|*.*";
-
-                dialog.Multiselect = false;
-
-                if (dialog.ShowDialog() !=
-                    DialogResult.OK)
-                {
-                    return;
-                }
-
-                string databaseName =
-                    Path.GetFileNameWithoutExtension(
-                        dialog.FileName);
-
-                LoadDictionary(
-                    dialog.FileName,
-                    databaseName);
-            }
-        }
-
-        // =====================================================
-        // Export
-        // =====================================================
-
-        private void ExportButton_Click(
-            object sender,
-            EventArgs e)
-        {
-            if (currentResults.Count == 0)
-            {
-                MessageBox.Show(
-                    "There are no results to export.",
-                    "Moughoof",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
-                return;
-            }
-
-            using (SaveFileDialog dialog =
-                new SaveFileDialog())
-            {
-                dialog.Title =
-                    "Export results";
-
-                dialog.Filter =
-                    "Text files (*.txt)|*.txt";
-
-                dialog.FileName =
-                    "Moughoof-results.txt";
-
-                if (dialog.ShowDialog() !=
-                    DialogResult.OK)
-                {
-                    return;
-                }
-
-                try
-                {
-                    using (StreamWriter writer =
-                        new StreamWriter(
-                            dialog.FileName,
-                            false,
-                            new UTF8Encoding(false)))
-                    {
-                        writer.WriteLine(
-                            "Word\tPronunciation");
-
-                        foreach (
-                            WordEntry entry
-                            in currentResults)
-                        {
-                            writer.WriteLine(
-                                entry.Word +
-                                "\t" +
-                                entry.Pronunciation);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(
-                        "Could not export results.\r\n\r\n" +
-                        ex.Message,
-                        "Moughoof",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        // =====================================================
-        // Cleanup
-        // =====================================================
-
-        protected override void Dispose(
-            bool disposing)
-        {
-            if (disposing)
-            {
-                if (resultPersianFont != null)
-                    resultPersianFont.Dispose();
-
-                if (resultPronunciationFont != null)
-                    resultPronunciationFont.Dispose();
-
-                if (resultContextMenu != null)
-                    resultContextMenu.Dispose();
-            }
-
-            base.Dispose(disposing);
         }
     }
 }
