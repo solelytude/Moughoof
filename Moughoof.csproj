@@ -5,9 +5,6 @@
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
 
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-
     <AssemblyName>Moughoof</AssemblyName>
     <RootNamespace>Moughoof</RootNamespace>
   </PropertyGroup>
