@@ -857,6 +857,28 @@ namespace Moughoof
             return CompareAlphabet(a, b);
         }
 
+// =====================================================
+// Persian word lookup
+// =====================================================
+
+private string FindPronunciation(
+    string inputWord)
+{
+    string normalizedInput =
+        NormalizePersianWord(inputWord);
+
+    foreach (WordEntry entry in entries)
+    {
+        string normalizedEntry =
+            NormalizePersianWord(entry.Word);
+
+        if (normalizedEntry == normalizedInput)
+            return entry.Pronunciation;
+    }
+
+    return "";
+}
+
         // =====================================================
         // Persian normalization
         // =====================================================
