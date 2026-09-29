@@ -62,7 +62,7 @@ public class MainForm : Form
     {
         InitializeForm();
         InitializeControls();
-        LoadDefaultDictionary();
+     //   LoadDefaultDictionary();
     }
 
     // =====================================================
