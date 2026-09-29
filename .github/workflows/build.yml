@@ -17,6 +17,9 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Restore
+        run: msbuild Moughoof.csproj /t:Restore
+
       - name: Build
         run: msbuild Moughoof.csproj /p:Configuration=Release
 
