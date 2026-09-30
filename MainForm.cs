@@ -88,10 +88,8 @@ public class MainForm : Form
         FormBorderStyle =
             FormBorderStyle.Sizable;
 
-        BackColor =
-            Color.FromArgb(32, 32, 32);
-
-        ForeColor = Color.White;
+        BackColor = SystemColors.Control;
+        ForeColor = SystemColors.ControlText;
 
         Font =
             new Font("Segoe UI", 9f);
@@ -123,10 +121,8 @@ public class MainForm : Form
                     11.5f,
                     FontStyle.Bold),
 
-            BackColor =
-                Color.FromArgb(45, 45, 45),
-
-            ForeColor = Color.Gray,
+           BackColor = SystemColors.Window,
+           ForeColor = SystemColors.WindowText,
 
             BorderStyle =
                 BorderStyle.FixedSingle,
