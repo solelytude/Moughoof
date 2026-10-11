@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 
 namespace Moughoof
@@ -47,7 +49,7 @@ namespace Moughoof
             new List<WordEntry>();
 
         private string lastSearchWord = "";
-
+        private string activeDatabaseName = "Default";
         private bool isUpdating = false;
 
         private class WordEntry
@@ -68,10 +70,14 @@ namespace Moughoof
         {
             InitializeForm();
             InitializeControls();
-            LoadTestDictionary();
             ConnectEvents();
-            UpdateDatabaseLabel();
+
+            LoadDefaultDictionary();
         }
+
+        // ================================================
+        // FORM
+        // ================================================
 
         private void InitializeForm()
         {
@@ -93,11 +99,13 @@ namespace Moughoof
             KeyPreview = true;
         }
 
+        // ================================================
+        // CONTROLS
+        // ================================================
+
         private void InitializeControls()
         {
-            // ================================================
-            // GROUP 1: INPUT / MATCH / SEARCH
-            // ================================================
+            // GROUP 1
 
             searchGroup = new Panel
             {
@@ -141,9 +149,7 @@ namespace Moughoof
                 TextAlign = ContentAlignment.MiddleLeft,
 
                 ForeColor = Color.LightGray,
-                BackColor = Color.Transparent,
-
-                Text = ""
+                BackColor = Color.Transparent
             };
 
             searchGroup.Controls.Add(pronunciationLabel);
@@ -170,6 +176,7 @@ namespace Moughoof
                 Size = new Size(62, 24),
 
                 Text = "FIRST",
+
                 ForeColor = Color.White,
                 BackColor = Color.Transparent
             };
@@ -182,6 +189,7 @@ namespace Moughoof
                 Size = new Size(58, 24),
 
                 Text = "LAST",
+
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
 
@@ -241,9 +249,7 @@ namespace Moughoof
 
             searchGroup.Controls.Add(statusLabel);
 
-            // ================================================
-            // GROUP 2: SORT / RESULTS
-            // ================================================
+            // GROUP 2
 
             resultsGroup = new Panel
             {
@@ -305,7 +311,7 @@ namespace Moughoof
 
             resultsGroup.Controls.Add(lengthRadio);
 
-            // OWNER-DRAW RESULTS LIST
+            // RESULTS LIST
 
             resultsListBox = new ListBox
             {
@@ -332,14 +338,12 @@ namespace Moughoof
 
             resultsGroup.Controls.Add(resultsListBox);
 
-            // ================================================
             // DATABASE LABEL
-            // ================================================
 
             databaseLabel = new Label
             {
                 Location = new Point(15, 585),
-                Size = new Size(300, 25),
+                Size = new Size(330, 25),
 
                 Anchor =
                     AnchorStyles.Bottom |
@@ -362,9 +366,7 @@ namespace Moughoof
 
             Controls.Add(databaseLabel);
 
-            // ================================================
             // EXPORT
-            // ================================================
 
             exportButton = new Button
             {
@@ -388,6 +390,10 @@ namespace Moughoof
             Controls.Add(exportButton);
         }
 
+        // ================================================
+        // EVENTS
+        // ================================================
+
         private void ConnectEvents()
         {
             inputBox.Enter += InputBox_Enter;
@@ -398,57 +404,201 @@ namespace Moughoof
 
             firstRadio.CheckedChanged += MatchOption_Changed;
             lastRadio.CheckedChanged += MatchOption_Changed;
-            matchCountBox.ValueChanged += MatchCountBox_ValueChanged;
 
-            alphabetRadio.CheckedChanged += SortOption_Changed;
-            lengthRadio.CheckedChanged += SortOption_Changed;
+            matchCountBox.ValueChanged +=
+                MatchCountBox_ValueChanged;
 
-            resultsListBox.DrawItem += ResultsListBox_DrawItem;
+            alphabetRadio.CheckedChanged +=
+                SortOption_Changed;
+
+            lengthRadio.CheckedChanged +=
+                SortOption_Changed;
+
+            resultsListBox.DrawItem +=
+                ResultsListBox_DrawItem;
+
+            databaseLabel.Click +=
+                DatabaseLabel_Click;
         }
 
         // ================================================
-        // TEST DICTIONARY
+        // DEFAULT DATABASE
         // ================================================
 
-        private void LoadTestDictionary()
+        private void LoadDefaultDictionary()
         {
-            dictionary.Clear();
+            string path = Path.Combine(
+                Application.StartupPath,
+                "PS.txt");
 
-            dictionary.Add(new WordEntry("سلام", "salam"));
-            dictionary.Add(new WordEntry("کتاب", "ketAb"));
-            dictionary.Add(new WordEntry("دوست", "dust"));
-            dictionary.Add(new WordEntry("خانه", "xAne"));
-            dictionary.Add(new WordEntry("مردم", "mardom"));
-            dictionary.Add(new WordEntry("کباب", "kabAb"));
-            dictionary.Add(new WordEntry("جواب", "javAb"));
-            dictionary.Add(new WordEntry("حساب", "hesAb"));
-            dictionary.Add(new WordEntry("کلام", "kalAm"));
-            dictionary.Add(new WordEntry("کنار", "kenAr"));
-            dictionary.Add(new WordEntry("کتابخانه", "ketAbxAne"));
-            dictionary.Add(new WordEntry("سلامتی", "salAmati"));
-            dictionary.Add(new WordEntry("دوام", "davAm"));
-            dictionary.Add(new WordEntry("پیام", "payAm"));
-            dictionary.Add(new WordEntry("نظام", "nezAm"));
-            dictionary.Add(new WordEntry("تمام", "tamAm"));
-            dictionary.Add(new WordEntry("مدام", "modAm"));
-            dictionary.Add(new WordEntry("کلمه", "kalame"));
-            dictionary.Add(new WordEntry("کمال", "kamAl"));
-            dictionary.Add(new WordEntry("جمال", "jamAl"));
+            if (!File.Exists(path))
+            {
+                dictionary.Clear();
+
+                activeDatabaseName = "Default";
+
+                UpdateDatabaseLabel();
+                ClearSearchResults();
+
+                statusLabel.Text = "PS.txt not found";
+                return;
+            }
+
+            try
+            {
+                List<WordEntry> loaded =
+                    ReadDictionaryFile(path);
+
+                dictionary.Clear();
+                dictionary.AddRange(loaded);
+
+                activeDatabaseName = "Default";
+
+                UpdateDatabaseLabel();
+                ClearSearchResults();
+                UpdatePronunciationPreview();
+
+                statusLabel.Text = "Database loaded";
+            }
+            catch (Exception ex)
+            {
+                dictionary.Clear();
+
+                UpdateDatabaseLabel();
+                ClearSearchResults();
+
+                statusLabel.Text = "Database error";
+
+                MessageBox.Show(
+                    "Could not load PS.txt.\r\n\r\n" +
+                    ex.Message,
+                    "Moughoof",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        // ================================================
+        // READ TAB-SEPARATED DICTIONARY
+        // ================================================
+
+        private List<WordEntry> ReadDictionaryFile(
+            string path)
+        {
+            List<WordEntry> loaded =
+                new List<WordEntry>();
+
+            using (StreamReader reader = new StreamReader(
+                path,
+                Encoding.UTF8,
+                true))
+            {
+                string line;
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    int tabIndex = line.IndexOf('\t');
+
+                    if (tabIndex < 0)
+                        continue;
+
+                    string persian =
+                        line.Substring(0, tabIndex);
+
+                    string pronunciation =
+                        line.Substring(tabIndex + 1);
+
+                    if (string.IsNullOrWhiteSpace(persian))
+                        continue;
+
+                    if (string.IsNullOrWhiteSpace(pronunciation))
+                        continue;
+
+                    loaded.Add(
+                        new WordEntry(
+                            persian,
+                            pronunciation));
+                }
+            }
+
+            return loaded;
+        }
+
+        // ================================================
+        // LOAD CUSTOM DATABASE
+        // ================================================
+
+        private void DatabaseLabel_Click(
+            object sender,
+            EventArgs e)
+        {
+            using (OpenFileDialog dialog =
+                new OpenFileDialog())
+            {
+                dialog.Title = "Load Dictionary";
+
+                dialog.Filter =
+                    "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+                dialog.CheckFileExists = true;
+                dialog.Multiselect = false;
+
+                if (dialog.ShowDialog(this) !=
+                    DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    List<WordEntry> loaded =
+                        ReadDictionaryFile(dialog.FileName);
+
+                    dictionary.Clear();
+                    dictionary.AddRange(loaded);
+
+                    activeDatabaseName =
+                        Path.GetFileName(dialog.FileName);
+
+                    UpdateDatabaseLabel();
+
+                    ClearSearchResults();
+                    UpdatePronunciationPreview();
+
+                    statusLabel.Text = "Database loaded";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "Could not load the selected dictionary.\r\n\r\n" +
+                        ex.Message,
+                        "Moughoof",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+            }
         }
 
         private void UpdateDatabaseLabel()
         {
             databaseLabel.Text =
-                "Database: Default, " +
+                "Database: " +
+                activeDatabaseName +
+                ", " +
                 dictionary.Count.ToString() +
                 " words";
         }
 
         // ================================================
-        // INPUT HANDLING
+        // INPUT
         // ================================================
 
-        private void InputBox_Enter(object sender, EventArgs e)
+        private void InputBox_Enter(
+            object sender,
+            EventArgs e)
         {
             if (inputBox.Text == "Input word")
             {
@@ -457,7 +607,9 @@ namespace Moughoof
             }
         }
 
-        private void InputBox_TextChanged(object sender, EventArgs e)
+        private void InputBox_TextChanged(
+            object sender,
+            EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -465,7 +617,9 @@ namespace Moughoof
             UpdatePronunciationPreview();
         }
 
-        private void InputBox_KeyDown(object sender, KeyEventArgs e)
+        private void InputBox_KeyDown(
+            object sender,
+            KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
@@ -484,12 +638,32 @@ namespace Moughoof
             return word;
         }
 
+        // ================================================
+        // PERSIAN LOOKUP NORMALIZATION
+        // ================================================
+
+        private string NormalizePersianLookup(string value)
+        {
+            if (value == null)
+                return "";
+
+            // Treat a ZWNJ and a regular space equivalently
+            // for lookup, without changing stored display text.
+
+            return value
+                .Replace('\u200C', ' ')
+                .Trim();
+        }
+
         private WordEntry FindExactWord(string word)
         {
+            string normalizedWord =
+                NormalizePersianLookup(word);
+
             return dictionary.FirstOrDefault(
                 item => string.Equals(
-                    item.Persian,
-                    word,
+                    NormalizePersianLookup(item.Persian),
+                    normalizedWord,
                     StringComparison.Ordinal));
         }
 
@@ -509,7 +683,9 @@ namespace Moughoof
         // SEARCH
         // ================================================
 
-        private void SearchButton_Click(object sender, EventArgs e)
+        private void SearchButton_Click(
+            object sender,
+            EventArgs e)
         {
             PerformSearch();
         }
@@ -521,9 +697,10 @@ namespace Moughoof
             if (string.IsNullOrWhiteSpace(word))
             {
                 lastSearchWord = "";
-                currentResults.Clear();
-                RefreshResults();
+
+                ClearSearchResults();
                 pronunciationLabel.Text = "";
+
                 return;
             }
 
@@ -532,6 +709,7 @@ namespace Moughoof
             if (source == null)
             {
                 lastSearchWord = word;
+
                 currentResults.Clear();
                 RefreshResults();
 
@@ -555,7 +733,8 @@ namespace Moughoof
 
             if (firstRadio.Checked)
             {
-                pattern = pronunciation.Substring(0, count);
+                pattern =
+                    pronunciation.Substring(0, count);
             }
             else
             {
@@ -567,8 +746,8 @@ namespace Moughoof
             currentResults = dictionary
                 .Where(item =>
                     !string.Equals(
-                        item.Persian,
-                        source.Persian,
+                        NormalizePersianLookup(item.Persian),
+                        NormalizePersianLookup(source.Persian),
                         StringComparison.Ordinal))
                 .Where(item =>
                 {
@@ -576,12 +755,12 @@ namespace Moughoof
                     {
                         return item.Pronunciation.StartsWith(
                             pattern,
-                            StringComparison.OrdinalIgnoreCase);
+                            StringComparison.Ordinal);
                     }
 
                     return item.Pronunciation.EndsWith(
                         pattern,
-                        StringComparison.OrdinalIgnoreCase);
+                        StringComparison.Ordinal);
                 })
                 .ToList();
 
@@ -589,11 +768,20 @@ namespace Moughoof
             RefreshResults();
         }
 
+        private void ClearSearchResults()
+        {
+            lastSearchWord = "";
+            currentResults.Clear();
+            RefreshResults();
+        }
+
         // ================================================
         // MATCH OPTIONS
         // ================================================
 
-        private void MatchOption_Changed(object sender, EventArgs e)
+        private void MatchOption_Changed(
+            object sender,
+            EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -602,7 +790,9 @@ namespace Moughoof
                 PerformSearch();
         }
 
-        private void MatchCountBox_ValueChanged(object sender, EventArgs e)
+        private void MatchCountBox_ValueChanged(
+            object sender,
+            EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -615,7 +805,9 @@ namespace Moughoof
         // SORTING
         // ================================================
 
-        private void SortOption_Changed(object sender, EventArgs e)
+        private void SortOption_Changed(
+            object sender,
+            EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -678,7 +870,7 @@ namespace Moughoof
         }
 
         // ================================================
-        // CUSTOM ROW DRAWING
+        // OWNER DRAW
         // ================================================
 
         private void ResultsListBox_DrawItem(
@@ -701,19 +893,11 @@ namespace Moughoof
                 (e.State & DrawItemState.Selected) ==
                 DrawItemState.Selected;
 
-            Color backgroundColor;
-
-            if (selected)
-            {
-                backgroundColor = selectedColor;
-            }
-            else
-            {
-                backgroundColor =
-                    e.Index % 2 == 0
-                        ? rowColor1
-                        : rowColor2;
-            }
+            Color backgroundColor = selected
+                ? selectedColor
+                : (e.Index % 2 == 0
+                    ? rowColor1
+                    : rowColor2);
 
             using (SolidBrush brush =
                 new SolidBrush(backgroundColor))
@@ -722,8 +906,6 @@ namespace Moughoof
                     brush,
                     e.Bounds);
             }
-
-            // Row width split: Persian 3/5, Latin 2/5.
 
             int persianWidth =
                 (int)(e.Bounds.Width * 0.6);
@@ -740,10 +922,6 @@ namespace Moughoof
                 e.Bounds.Width - persianWidth - 6,
                 e.Bounds.Height);
 
-            Color textColor = selected
-                ? Color.White
-                : Color.White;
-
             using (Font persianFont = new Font(
                 "Segoe UI",
                 11f,
@@ -754,7 +932,7 @@ namespace Moughoof
                     item.Persian,
                     persianFont,
                     persianBounds,
-                    textColor,
+                    Color.White,
                     TextFormatFlags.Right |
                     TextFormatFlags.VerticalCenter |
                     TextFormatFlags.NoPrefix |
@@ -771,7 +949,7 @@ namespace Moughoof
                     item.Pronunciation,
                     latinFont,
                     latinBounds,
-                    textColor,
+                    Color.White,
                     TextFormatFlags.Left |
                     TextFormatFlags.VerticalCenter |
                     TextFormatFlags.NoPrefix |
