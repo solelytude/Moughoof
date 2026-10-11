@@ -29,6 +29,12 @@ namespace Moughoof
         private Button exportButton;
         private Label databaseLabel;
 
+        private readonly Color rowColor1 =
+            Color.FromArgb(40, 40, 40);
+
+        private readonly Color rowColor2 =
+            Color.FromArgb(56, 56, 56);
+
         public MainForm()
         {
             InitializeForm();
@@ -239,30 +245,33 @@ namespace Moughoof
 
             resultsGroup.Controls.Add(lengthRadio);
 
-            // ORDINARY LISTBOX
-            // No OwnerDraw, no custom drawing, no event handlers.
+            // OWNER-DRAW LISTBOX
 
             resultsListBox = new ListBox
             {
                 Location = new Point(5, 35),
                 Size = new Size(430, 345),
+
                 Anchor =
                     AnchorStyles.Top |
                     AnchorStyles.Bottom |
                     AnchorStyles.Left |
                     AnchorStyles.Right,
 
-                BackColor = Color.FromArgb(40, 40, 40),
+                BackColor = rowColor1,
                 ForeColor = Color.White,
 
                 BorderStyle = BorderStyle.FixedSingle,
 
-                DrawMode = DrawMode.Normal,
-
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 27,
                 IntegralHeight = false,
 
                 Font = new Font("Segoe UI", 10f)
             };
+
+            resultsListBox.DrawItem +=
+                ResultsListBox_DrawItem;
 
             resultsGroup.Controls.Add(resultsListBox);
 
@@ -274,6 +283,7 @@ namespace Moughoof
             {
                 Location = new Point(15, 585),
                 Size = new Size(300, 25),
+
                 Anchor =
                     AnchorStyles.Bottom |
                     AnchorStyles.Left,
@@ -302,6 +312,7 @@ namespace Moughoof
             {
                 Location = new Point(365, 582),
                 Size = new Size(80, 32),
+
                 Anchor =
                     AnchorStyles.Bottom |
                     AnchorStyles.Right,
@@ -316,6 +327,60 @@ namespace Moughoof
                 Color.FromArgb(90, 90, 90);
 
             Controls.Add(exportButton);
+        }
+
+        private void ResultsListBox_DrawItem(
+            object sender,
+            DrawItemEventArgs e)
+        {
+            if (e.Index < 0 ||
+                e.Index >= resultsListBox.Items.Count)
+            {
+                return;
+            }
+
+            bool selected =
+                (e.State & DrawItemState.Selected) ==
+                DrawItemState.Selected;
+
+            Color backgroundColor;
+
+            if (selected)
+            {
+                backgroundColor =
+                    SystemColors.Highlight;
+            }
+            else
+            {
+                backgroundColor =
+                    (e.Index % 2 == 0)
+                        ? rowColor1
+                        : rowColor2;
+            }
+
+            using (SolidBrush backgroundBrush =
+                new SolidBrush(backgroundColor))
+            {
+                e.Graphics.FillRectangle(
+                    backgroundBrush,
+                    e.Bounds);
+            }
+
+            Color textColor = selected
+                ? SystemColors.HighlightText
+                : Color.White;
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                resultsListBox.Items[e.Index].ToString(),
+                resultsListBox.Font,
+                e.Bounds,
+                textColor,
+                TextFormatFlags.Left |
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.NoPrefix);
+
+            e.DrawFocusRectangle();
         }
 
         private void LoadTestResults()
