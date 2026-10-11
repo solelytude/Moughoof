@@ -31,7 +31,10 @@ namespace Moughoof
         private ListBox resultsListBox;
 
         private Button exportButton;
-        private Label databaseLabel;
+        private Label referenceLabel;
+
+        private ContextMenuStrip resultsContextMenu;
+        private ToolStripMenuItem copyMenuItem;
 
         private readonly Color rowColor1 =
             Color.FromArgb(40, 40, 40);
@@ -49,7 +52,9 @@ namespace Moughoof
             new List<WordEntry>();
 
         private string lastSearchWord = "";
-        private string activeDatabaseName = "Default";
+        private string activeReferenceName = "Default";
+
+        private bool referenceLoaded = false;
         private bool isUpdating = false;
 
         private class WordEntry
@@ -96,6 +101,8 @@ namespace Moughoof
             ForeColor = Color.White;
 
             Font = new Font("Segoe UI", 9f);
+
+            // Process keyboard shortcuts at form level.
             KeyPreview = true;
         }
 
@@ -105,7 +112,7 @@ namespace Moughoof
 
         private void InitializeControls()
         {
-            // GROUP 1
+            // GROUP 1: INPUT / MATCH / SEARCH
 
             searchGroup = new Panel
             {
@@ -244,12 +251,12 @@ namespace Moughoof
                 ForeColor = Color.LightGray,
                 BackColor = Color.Transparent,
 
-                Text = "0 Results"
+                Text = ""
             };
 
             searchGroup.Controls.Add(statusLabel);
 
-            // GROUP 2
+            // GROUP 2: SORT / RESULTS
 
             resultsGroup = new Panel
             {
@@ -333,17 +340,19 @@ namespace Moughoof
                 ItemHeight = 27,
                 IntegralHeight = false,
 
-                Font = new Font("Segoe UI", 10f)
+                Font = new Font("Segoe UI", 10f),
+
+                SelectionMode = SelectionMode.One
             };
 
             resultsGroup.Controls.Add(resultsListBox);
 
-            // DATABASE LABEL
+            // DATABASE REFERENCE LABEL
 
-            databaseLabel = new Label
+            referenceLabel = new Label
             {
                 Location = new Point(15, 585),
-                Size = new Size(330, 25),
+                Size = new Size(335, 25),
 
                 Anchor =
                     AnchorStyles.Bottom |
@@ -352,7 +361,7 @@ namespace Moughoof
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
 
-                Text = "Database: Default, 0 words",
+                Text = "Reference Not Found",
 
                 ForeColor = Color.LightSkyBlue,
                 BackColor = Color.Transparent,
@@ -360,11 +369,11 @@ namespace Moughoof
                 Cursor = Cursors.Hand
             };
 
-            databaseLabel.Font = new Font(
-                databaseLabel.Font,
+            referenceLabel.Font = new Font(
+                referenceLabel.Font,
                 FontStyle.Underline);
 
-            Controls.Add(databaseLabel);
+            Controls.Add(referenceLabel);
 
             // EXPORT
 
@@ -388,6 +397,17 @@ namespace Moughoof
                 Color.FromArgb(90, 90, 90);
 
             Controls.Add(exportButton);
+
+            // RIGHT-CLICK MENU
+
+            resultsContextMenu = new ContextMenuStrip();
+
+            copyMenuItem = new ToolStripMenuItem("Copy");
+
+            resultsContextMenu.Items.Add(copyMenuItem);
+
+            resultsListBox.ContextMenuStrip =
+                resultsContextMenu;
         }
 
         // ================================================
@@ -398,7 +418,6 @@ namespace Moughoof
         {
             inputBox.Enter += InputBox_Enter;
             inputBox.TextChanged += InputBox_TextChanged;
-            inputBox.KeyDown += InputBox_KeyDown;
 
             searchButton.Click += SearchButton_Click;
 
@@ -417,12 +436,23 @@ namespace Moughoof
             resultsListBox.DrawItem +=
                 ResultsListBox_DrawItem;
 
-            databaseLabel.Click +=
-                DatabaseLabel_Click;
+            resultsListBox.MouseDown +=
+                ResultsListBox_MouseDown;
+
+            copyMenuItem.Click +=
+                CopyMenuItem_Click;
+
+            exportButton.Click +=
+                ExportButton_Click;
+
+            referenceLabel.Click +=
+                ReferenceLabel_Click;
+
+            KeyDown += MainForm_KeyDown;
         }
 
         // ================================================
-        // DEFAULT DATABASE
+        // DEFAULT REFERENCE
         // ================================================
 
         private void LoadDefaultDictionary()
@@ -435,12 +465,16 @@ namespace Moughoof
             {
                 dictionary.Clear();
 
-                activeDatabaseName = "Default";
+                referenceLoaded = false;
+                activeReferenceName = "Default";
 
-                UpdateDatabaseLabel();
+                UpdateReferenceLabel();
                 ClearSearchResults();
 
-                statusLabel.Text = "PS.txt not found";
+                // Missing reference must not display
+                // any status message.
+                statusLabel.Text = "";
+
                 return;
             }
 
@@ -452,34 +486,32 @@ namespace Moughoof
                 dictionary.Clear();
                 dictionary.AddRange(loaded);
 
-                activeDatabaseName = "Default";
+                referenceLoaded = true;
+                activeReferenceName = "Default";
 
-                UpdateDatabaseLabel();
+                UpdateReferenceLabel();
                 ClearSearchResults();
                 UpdatePronunciationPreview();
 
-                statusLabel.Text = "Database loaded";
+                statusLabel.Text = "";
             }
-            catch (Exception ex)
+            catch
             {
                 dictionary.Clear();
 
-                UpdateDatabaseLabel();
+                referenceLoaded = false;
+                activeReferenceName = "Default";
+
+                UpdateReferenceLabel();
                 ClearSearchResults();
 
-                statusLabel.Text = "Database error";
-
-                MessageBox.Show(
-                    "Could not load PS.txt.\r\n\r\n" +
-                    ex.Message,
-                    "Moughoof",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                pronunciationLabel.Text = "";
+                statusLabel.Text = "";
             }
         }
 
         // ================================================
-        // READ TAB-SEPARATED DICTIONARY
+        // READ DICTIONARY FILE
         // ================================================
 
         private List<WordEntry> ReadDictionaryFile(
@@ -511,6 +543,11 @@ namespace Moughoof
                     string pronunciation =
                         line.Substring(tabIndex + 1);
 
+                    // Preserve the stored word and pronunciation.
+                    // Remove only line-ending whitespace artifacts.
+                    persian = persian.Trim();
+                    pronunciation = pronunciation.Trim();
+
                     if (string.IsNullOrWhiteSpace(persian))
                         continue;
 
@@ -528,17 +565,17 @@ namespace Moughoof
         }
 
         // ================================================
-        // LOAD CUSTOM DATABASE
+        // LOAD CUSTOM REFERENCE
         // ================================================
 
-        private void DatabaseLabel_Click(
+        private void ReferenceLabel_Click(
             object sender,
             EventArgs e)
         {
             using (OpenFileDialog dialog =
                 new OpenFileDialog())
             {
-                dialog.Title = "Load Dictionary";
+                dialog.Title = "Load Reference";
 
                 dialog.Filter =
                     "Text files (*.txt)|*.txt|All files (*.*)|*.*";
@@ -546,34 +583,35 @@ namespace Moughoof
                 dialog.CheckFileExists = true;
                 dialog.Multiselect = false;
 
-                if (dialog.ShowDialog(this) !=
-                    DialogResult.OK)
-                {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
-                }
 
                 try
                 {
+                    // Read first. Replace the active reference only
+                    // after the file has been read successfully.
                     List<WordEntry> loaded =
                         ReadDictionaryFile(dialog.FileName);
 
                     dictionary.Clear();
                     dictionary.AddRange(loaded);
 
-                    activeDatabaseName =
+                    referenceLoaded = true;
+
+                    activeReferenceName =
                         Path.GetFileName(dialog.FileName);
 
-                    UpdateDatabaseLabel();
+                    UpdateReferenceLabel();
 
                     ClearSearchResults();
                     UpdatePronunciationPreview();
 
-                    statusLabel.Text = "Database loaded";
+                    statusLabel.Text = "";
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(
-                        "Could not load the selected dictionary.\r\n\r\n" +
+                        "Could not load the selected reference.\r\n\r\n" +
                         ex.Message,
                         "Moughoof",
                         MessageBoxButtons.OK,
@@ -582,11 +620,17 @@ namespace Moughoof
             }
         }
 
-        private void UpdateDatabaseLabel()
+        private void UpdateReferenceLabel()
         {
-            databaseLabel.Text =
-                "Database: " +
-                activeDatabaseName +
+            if (!referenceLoaded)
+            {
+                referenceLabel.Text = "Reference Not Found";
+                return;
+            }
+
+            referenceLabel.Text =
+                "Reference: " +
+                activeReferenceName +
                 ", " +
                 dictionary.Count.ToString() +
                 " words";
@@ -617,17 +661,6 @@ namespace Moughoof
             UpdatePronunciationPreview();
         }
 
-        private void InputBox_KeyDown(
-            object sender,
-            KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.SuppressKeyPress = true;
-                PerformSearch();
-            }
-        }
-
         private string GetInputWord()
         {
             string word = inputBox.Text.Trim();
@@ -639,7 +672,7 @@ namespace Moughoof
         }
 
         // ================================================
-        // PERSIAN LOOKUP NORMALIZATION
+        // PERSIAN LOOKUP
         // ================================================
 
         private string NormalizePersianLookup(string value)
@@ -647,8 +680,8 @@ namespace Moughoof
             if (value == null)
                 return "";
 
-            // Treat a ZWNJ and a regular space equivalently
-            // for lookup, without changing stored display text.
+            // Treat ZWNJ and regular space as equivalent
+            // for lookup only. Do not alter stored display text.
 
             return value
                 .Replace('\u200C', ' ')
@@ -669,6 +702,12 @@ namespace Moughoof
 
         private void UpdatePronunciationPreview()
         {
+            if (!referenceLoaded)
+            {
+                pronunciationLabel.Text = "";
+                return;
+            }
+
             string word = GetInputWord();
 
             WordEntry entry = FindExactWord(word);
@@ -677,6 +716,41 @@ namespace Moughoof
                 entry == null
                     ? ""
                     : entry.Pronunciation;
+        }
+
+        // ================================================
+        // GLOBAL KEYBOARD HANDLING
+        // ================================================
+
+        private void MainForm_KeyDown(
+            object sender,
+            KeyEventArgs e)
+        {
+            // Enter triggers Search regardless of which
+            // control currently has focus.
+
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+
+                PerformSearch();
+                return;
+            }
+
+            // Ctrl+C copies the Persian word of the
+            // selected result, regardless of focus.
+
+            if (e.Control && e.KeyCode == Keys.C)
+            {
+                if (resultsListBox.SelectedItem is WordEntry)
+                {
+                    CopySelectedPersian();
+
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                }
+            }
         }
 
         // ================================================
@@ -692,6 +766,14 @@ namespace Moughoof
 
         private void PerformSearch()
         {
+            if (!referenceLoaded)
+            {
+                ClearSearchResults();
+                statusLabel.Text = "";
+                pronunciationLabel.Text = "";
+                return;
+            }
+
             string word = GetInputWord();
 
             if (string.IsNullOrWhiteSpace(word))
@@ -733,8 +815,7 @@ namespace Moughoof
 
             if (firstRadio.Checked)
             {
-                pattern =
-                    pronunciation.Substring(0, count);
+                pattern = pronunciation.Substring(0, count);
             }
             else
             {
@@ -870,7 +951,143 @@ namespace Moughoof
         }
 
         // ================================================
-        // OWNER DRAW
+        // COPY SELECTED PERSIAN WORD
+        // ================================================
+
+        private void ResultsListBox_MouseDown(
+            object sender,
+            MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
+                return;
+
+            int index =
+                resultsListBox.IndexFromPoint(e.Location);
+
+            if (index >= 0 &&
+                index < resultsListBox.Items.Count)
+            {
+                resultsListBox.SelectedIndex = index;
+            }
+            else
+            {
+                resultsListBox.ClearSelected();
+            }
+        }
+
+        private void CopyMenuItem_Click(
+            object sender,
+            EventArgs e)
+        {
+            CopySelectedPersian();
+        }
+
+        private void CopySelectedPersian()
+        {
+            WordEntry selected =
+                resultsListBox.SelectedItem as WordEntry;
+
+            if (selected == null)
+                return;
+
+            try
+            {
+                Clipboard.SetText(selected.Persian);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Could not copy the selected word.\r\n\r\n" +
+                    ex.Message,
+                    "Moughoof",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        // ================================================
+        // EXPORT ACTIVE REFERENCE
+        // ================================================
+
+        private void ExportButton_Click(
+            object sender,
+            EventArgs e)
+        {
+            if (!referenceLoaded)
+            {
+                MessageBox.Show(
+                    "No reference is loaded.",
+                    "Moughoof",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                return;
+            }
+
+            using (SaveFileDialog dialog =
+                new SaveFileDialog())
+            {
+                dialog.Title = "Export Reference";
+
+                dialog.Filter =
+                    "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+                dialog.DefaultExt = "txt";
+                dialog.AddExtension = true;
+                dialog.OverwritePrompt = true;
+
+                string suggestedName =
+                    activeReferenceName;
+
+                if (string.IsNullOrWhiteSpace(suggestedName) ||
+                    suggestedName == "Default")
+                {
+                    suggestedName = "Reference.txt";
+                }
+                else if (!suggestedName.EndsWith(
+                    ".txt",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    suggestedName += ".txt";
+                }
+
+                dialog.FileName = suggestedName;
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                try
+                {
+                    using (StreamWriter writer =
+                        new StreamWriter(
+                            dialog.FileName,
+                            false,
+                            new UTF8Encoding(false)))
+                    {
+                        foreach (WordEntry item in dictionary)
+                        {
+                            writer.Write(item.Persian);
+                            writer.Write('\t');
+                            writer.WriteLine(item.Pronunciation);
+                        }
+                    }
+
+                    statusLabel.Text = "Export completed";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "Could not export the reference.\r\n\r\n" +
+                        ex.Message,
+                        "Moughoof",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        // ================================================
+        // OWNER-DRAW RESULTS
         // ================================================
 
         private void ResultsListBox_DrawItem(
