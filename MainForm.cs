@@ -11,6 +11,64 @@ namespace Moughoof
 {
     public class MainForm : Form
     {
+        private Panel inputPanel;
+        private Panel matchOptionsPanel;
+        private Panel outputPanel;
+        private Panel sortOptionsPanel;
+        private Panel divider;
+
+        private TextBox inputBox;
+        private Label pronunciationLabel;
+
+        private Label matchLabel;
+        private RadioButton firstRadio;
+        private RadioButton lastRadio;
+        private NumericUpDown matchCountBox;
+        private Button searchButton;
+
+        private Label sortLabel;
+        private RadioButton alphabetRadio;
+        private RadioButton lengthRadio;
+        private Label statusLabel;
+
+        private ListBox resultsListBox;
+
+        private Label referenceLabel;
+        private Button exportButton;
+
+        private ContextMenuStrip resultsContextMenu;
+        private ToolStripMenuItem copyMenuItem;
+
+        private readonly Color backgroundColor =
+            Color.FromArgb(32, 32, 32);
+
+        private readonly Color panelColor =
+            Color.FromArgb(38, 38, 38);
+
+        private readonly Color rowColor1 =
+            Color.FromArgb(40, 40, 40);
+
+        private readonly Color rowColor2 =
+            Color.FromArgb(56, 56, 56);
+
+        private readonly Color selectedColor =
+            Color.FromArgb(65, 100, 145);
+
+        private readonly Color foregroundColor =
+            Color.White;
+
+        private readonly List<WordEntry> dictionary =
+            new List<WordEntry>();
+
+        private List<WordEntry> currentResults =
+            new List<WordEntry>();
+
+        private string lastSearchWord = "";
+        private string activeReferenceName = "Default";
+
+        private bool referenceLoaded = false;
+        private bool isUpdating = false;
+
         private class WordEntry
         {
             public string Persian { get; set; }
@@ -21,46 +79,12 @@ namespace Moughoof
                 Persian = persian;
                 Pronunciation = pronunciation;
             }
+
+            public override string ToString()
+            {
+                return Persian;
+            }
         }
-
-        private Panel searchPanel;
-        private Panel resultsPanel;
-
-        private TextBox inputBox;
-        private Label pronunciationLabel;
-
-        private RadioButton firstRadio;
-        private RadioButton lastRadio;
-        private NumericUpDown matchCount;
-
-        private Button searchButton;
-        private Label statusLabel;
-
-        private RadioButton alphabetRadio;
-        private RadioButton lengthRadio;
-
-        private ListBox resultsListBox;
-
-        private Label referenceLabel;
-        private Button exportButton;
-
-        private ContextMenuStrip resultsContextMenu;
-        private ToolStripMenuItem copyMenuItem;
-
-        private readonly Color backgroundColor = Color.FromArgb(32, 32, 32);
-        private readonly Color panelColor = Color.FromArgb(40, 40, 40);
-        private readonly Color rowColor1 = Color.FromArgb(40, 40, 40);
-        private readonly Color rowColor2 = Color.FromArgb(56, 56, 56);
-        private readonly Color selectedColor = Color.FromArgb(65, 100, 145);
-        private readonly Color foregroundColor = Color.Gainsboro;
-
-        private List<WordEntry> dictionary = new List<WordEntry>();
-        private List<WordEntry> currentResults = new List<WordEntry>();
-
-        private string lastSearchWord = "";
-        private string activeReferenceName = "Default";
-        private bool referenceLoaded = false;
-        private bool isUpdating = false;
 
         public MainForm()
         {
@@ -70,188 +94,327 @@ namespace Moughoof
             LoadDefaultDictionary();
         }
 
+        // ==================================================
+        // FORM
+        // ==================================================
+
         private void InitializeForm()
         {
             Text = "Moughoof";
-            StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(444, 611);
-            MinimumSize = new Size(460, 570);
+
+            ClientSize = new Size(460, 650);
+            MinimumSize = new Size(460, 530);
             MaximumSize = new Size(460, 2000);
+
+            MinimizeBox = true;
+            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
 
             BackColor = backgroundColor;
             ForeColor = foregroundColor;
-            Font = new Font("Segoe UI", 9F);
+            Font = new Font("Segoe UI", 9f);
+
             KeyPreview = true;
         }
 
+        // ==================================================
+        // CONTROLS AND LAYOUT
+        // ==================================================
+
         private void InitializeControls()
         {
-            searchPanel = new Panel
+            // INPUT PANEL
+
+            inputPanel = new Panel
             {
                 Location = new Point(10, 8),
-                Size = new Size(424, 151),
-                BackColor = panelColor,
-                Padding = new Padding(4)
+                Size = new Size(440, 151),
+                BackColor = backgroundColor,
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
             };
+
+            Controls.Add(inputPanel);
 
             inputBox = new TextBox
             {
-                Location = new Point(7, 7),
-                Size = new Size(406, 25),
-                Font = new Font("Segoe UI", 10F),
-                BackColor = Color.FromArgb(48, 48, 48),
-                ForeColor = foregroundColor,
+                Location = new Point(5, 4),
+                Size = new Size(430, 30),
+                Font = new Font("Segoe UI", 11.5f, FontStyle.Bold),
+                BackColor = Color.FromArgb(45, 45, 45),
+                ForeColor = Color.Gray,
                 BorderStyle = BorderStyle.FixedSingle,
-                RightToLeft = RightToLeft.No
+                Text = "Input word",
+                RightToLeft = RightToLeft.No,
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
             };
+
+            inputPanel.Controls.Add(inputBox);
 
             pronunciationLabel = new Label
             {
-                Location = new Point(8, 34),
-                Size = new Size(405, 19),
-                Text = "",
+                Location = new Point(5, 35),
+                Size = new Size(430, 20),
+                AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.Silver,
+                ForeColor = Color.LightGray,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 9F)
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
             };
+
+            inputPanel.Controls.Add(pronunciationLabel);
+
+            // MATCH OPTIONS PANEL
+            // Its radio buttons are isolated from the sort options.
+
+            matchOptionsPanel = new Panel
+            {
+                Location = new Point(3, 59),
+                Size = new Size(260, 31),
+                BackColor = backgroundColor
+            };
+
+            inputPanel.Controls.Add(matchOptionsPanel);
+
+            matchLabel = new Label
+            {
+                Location = new Point(2, 2),
+                Size = new Size(52, 25),
+                Text = "MATCH",
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = foregroundColor,
+                BackColor = Color.Transparent
+            };
+
+            matchOptionsPanel.Controls.Add(matchLabel);
 
             firstRadio = new RadioButton
             {
-                Location = new Point(8, 60),
-                AutoSize = true,
+                Location = new Point(57, 3),
+                Size = new Size(65, 24),
                 Text = "FIRST",
                 ForeColor = foregroundColor,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                AutoCheck = true
             };
+
+            matchOptionsPanel.Controls.Add(firstRadio);
 
             lastRadio = new RadioButton
             {
-                Location = new Point(83, 60),
-                AutoSize = true,
+                Location = new Point(123, 3),
+                Size = new Size(58, 24),
                 Text = "LAST",
                 ForeColor = foregroundColor,
                 BackColor = Color.Transparent,
-                Checked = true
+                Checked = true,
+                AutoCheck = true
             };
 
-            matchCount = new NumericUpDown
+            matchOptionsPanel.Controls.Add(lastRadio);
+
+            matchCountBox = new NumericUpDown
             {
-                Location = new Point(151, 59),
-                Size = new Size(53, 23),
+                Location = new Point(187, 3),
+                Size = new Size(52, 24),
                 Minimum = 1,
                 Maximum = 50,
                 Value = 2,
-                BackColor = Color.FromArgb(48, 48, 48),
-                ForeColor = foregroundColor,
-                BorderStyle = BorderStyle.FixedSingle
+                TextAlign = HorizontalAlignment.Center
             };
+
+            matchOptionsPanel.Controls.Add(matchCountBox);
+
+            // SEARCH BUTTON
 
             searchButton = new Button
             {
-                Location = new Point(282, 57),
-                Size = new Size(131, 27),
-                Text = "Search",
+                Location = new Point(5, 98),
+                Size = new Size(100, 30),
+                Text = "SEARCH",
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(58, 58, 58),
+                BackColor = Color.FromArgb(55, 55, 55),
                 ForeColor = foregroundColor,
                 Cursor = Cursors.Hand
             };
-            searchButton.FlatAppearance.BorderColor = Color.FromArgb(75, 75, 75);
 
-            alphabetRadio = new RadioButton
+            searchButton.FlatAppearance.BorderColor =
+                Color.FromArgb(90, 90, 90);
+
+            inputPanel.Controls.Add(searchButton);
+
+            // THIN DIVIDER BETWEEN INPUT AND OUTPUT
+
+            divider = new Panel
             {
-                Location = new Point(8, 101),
-                AutoSize = true,
-                Text = "ALPHABET",
-                ForeColor = foregroundColor,
-                BackColor = Color.Transparent,
-                Checked = true
+                Location = new Point(10, 165),
+                Size = new Size(440, 1),
+                BackColor = Color.FromArgb(85, 85, 85),
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
             };
 
-            lengthRadio = new RadioButton
+            Controls.Add(divider);
+
+            // OUTPUT PANEL
+
+            outputPanel = new Panel
             {
-                Location = new Point(112, 101),
-                AutoSize = true,
-                Text = "LENGTH",
+                Location = new Point(10, 174),
+                Size = new Size(440, 397),
+                BackColor = backgroundColor,
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Bottom |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
+            };
+
+            Controls.Add(outputPanel);
+
+            // SORT OPTIONS PANEL
+            // Separate parent ensures independent radio groups.
+
+            sortOptionsPanel = new Panel
+            {
+                Location = new Point(3, 0),
+                Size = new Size(235, 29),
+                BackColor = backgroundColor,
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Left
+            };
+
+            outputPanel.Controls.Add(sortOptionsPanel);
+
+            sortLabel = new Label
+            {
+                Location = new Point(2, 2),
+                Size = new Size(48, 24),
+                Text = "SORT",
+                TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = foregroundColor,
                 BackColor = Color.Transparent
             };
 
+            sortOptionsPanel.Controls.Add(sortLabel);
+
+            alphabetRadio = new RadioButton
+            {
+                Location = new Point(51, 2),
+                Size = new Size(105, 24),
+                Text = "ALPHABET",
+                ForeColor = foregroundColor,
+                BackColor = Color.Transparent,
+                Checked = true,
+                AutoCheck = true
+            };
+
+            sortOptionsPanel.Controls.Add(alphabetRadio);
+
+            lengthRadio = new RadioButton
+            {
+                Location = new Point(157, 2),
+                Size = new Size(75, 24),
+                Text = "LENGTH",
+                ForeColor = foregroundColor,
+                BackColor = Color.Transparent,
+                AutoCheck = true
+            };
+
+            sortOptionsPanel.Controls.Add(lengthRadio);
+
+            // RESULTS COUNT AT THE TOP RIGHT
+
             statusLabel = new Label
             {
-                Location = new Point(8, 125),
-                Size = new Size(405, 18),
-                Text = "",
-                ForeColor = Color.Silver,
+                Location = new Point(245, 2),
+                Size = new Size(190, 24),
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleRight,
+                ForeColor = Color.LightGray,
                 BackColor = Color.Transparent,
-                TextAlign = ContentAlignment.MiddleLeft
+                Text = "",
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Right
             };
 
-            searchPanel.Controls.Add(inputBox);
-            searchPanel.Controls.Add(pronunciationLabel);
-            searchPanel.Controls.Add(firstRadio);
-            searchPanel.Controls.Add(lastRadio);
-            searchPanel.Controls.Add(matchCount);
-            searchPanel.Controls.Add(searchButton);
-            searchPanel.Controls.Add(alphabetRadio);
-            searchPanel.Controls.Add(lengthRadio);
-            searchPanel.Controls.Add(statusLabel);
+            outputPanel.Controls.Add(statusLabel);
 
-            resultsPanel = new Panel
-            {
-                Location = new Point(10, 167),
-                Size = new Size(424, 404),
-                BackColor = panelColor,
-                Padding = new Padding(0),
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom |
-                         AnchorStyles.Left | AnchorStyles.Right
-            };
+            // RESULTS LIST
 
             resultsListBox = new ListBox
             {
-                Location = new Point(0, 0),
-                Size = new Size(424, 404),
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom |
-                         AnchorStyles.Left | AnchorStyles.Right,
+                Location = new Point(5, 31),
+                Size = new Size(430, 361),
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Bottom |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right,
+                BackColor = rowColor1,
+                ForeColor = foregroundColor,
+                BorderStyle = BorderStyle.FixedSingle,
                 DrawMode = DrawMode.OwnerDrawFixed,
                 ItemHeight = 27,
-                BorderStyle = BorderStyle.None,
                 IntegralHeight = false,
-                BackColor = panelColor,
-                ForeColor = foregroundColor,
+                Font = new Font("Segoe UI", 10f),
                 SelectionMode = SelectionMode.One,
                 HorizontalScrollbar = false
             };
 
-            resultsPanel.Controls.Add(resultsListBox);
+            outputPanel.Controls.Add(resultsListBox);
+
+            // REFERENCE LABEL
+            // Kept independent of both panels.
 
             referenceLabel = new Label
             {
-                Location = new Point(10, 582),
+                Location = new Point(10, 610),
                 AutoSize = true,
                 Text = "Reference Not Found",
-                ForeColor = Color.Silver,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.LightSkyBlue,
                 BackColor = backgroundColor,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Underline),
                 Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
+                Anchor = AnchorStyles.Bottom |
+                         AnchorStyles.Left,
                 Margin = Padding.Empty
             };
 
+            referenceLabel.Font = new Font(
+                "Segoe UI",
+                8.5f,
+                FontStyle.Underline);
+
+            Controls.Add(referenceLabel);
+
+            // EXPORT BUTTON
+
             exportButton = new Button
             {
-                Location = new Point(365, 579),
-                Size = new Size(69, 25),
-                Text = "Export",
+                Location = new Point(370, 605),
+                Size = new Size(80, 29),
+                Anchor = AnchorStyles.Bottom |
+                         AnchorStyles.Right,
+                Text = "EXPORT",
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(48, 48, 48),
+                BackColor = Color.FromArgb(55, 55, 55),
                 ForeColor = foregroundColor,
                 Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+                Enabled = false,
                 Margin = Padding.Empty
             };
-            exportButton.FlatAppearance.BorderColor = Color.FromArgb(75, 75, 75);
+
+            exportButton.FlatAppearance.BorderColor =
+                Color.FromArgb(90, 90, 90);
+
+            Controls.Add(exportButton);
+
+            // RIGHT-CLICK MENU
 
             resultsContextMenu = new ContextMenuStrip
             {
@@ -261,80 +424,81 @@ namespace Moughoof
 
             copyMenuItem = new ToolStripMenuItem("Copy");
             resultsContextMenu.Items.Add(copyMenuItem);
-            resultsListBox.ContextMenuStrip = resultsContextMenu;
 
-            Controls.Add(searchPanel);
-            Controls.Add(resultsPanel);
-            Controls.Add(referenceLabel);
-            Controls.Add(exportButton);
+            resultsListBox.ContextMenuStrip = resultsContextMenu;
         }
+
+        // ==================================================
+        // EVENTS
+        // ==================================================
 
         private void ConnectEvents()
         {
-            inputBox.Enter += delegate
-            {
-                inputBox.SelectAll();
-            };
+            inputBox.Enter += InputBox_Enter;
+            inputBox.TextChanged += InputBox_TextChanged;
 
-            inputBox.TextChanged += delegate
-            {
-                UpdatePronunciationPreview();
-            };
+            searchButton.Click += SearchButton_Click;
 
-            searchButton.Click += delegate
-            {
-                PerformSearch();
-            };
+            firstRadio.CheckedChanged += MatchOption_Changed;
+            lastRadio.CheckedChanged += MatchOption_Changed;
 
-            firstRadio.CheckedChanged += MatchOptionChanged;
-            lastRadio.CheckedChanged += MatchOptionChanged;
+            matchCountBox.ValueChanged += MatchCountBox_ValueChanged;
 
-            alphabetRadio.CheckedChanged += SortOptionChanged;
-            lengthRadio.CheckedChanged += SortOptionChanged;
+            alphabetRadio.CheckedChanged += SortOption_Changed;
+            lengthRadio.CheckedChanged += SortOption_Changed;
 
             resultsListBox.DrawItem += ResultsListBox_DrawItem;
             resultsListBox.MouseDown += ResultsListBox_MouseDown;
 
-            copyMenuItem.Click += delegate
-            {
-                CopySelectedPersian();
-            };
+            copyMenuItem.Click += CopyMenuItem_Click;
 
-            exportButton.Click += delegate
-            {
-                ExportCurrentResults();
-            };
-
+            exportButton.Click += ExportButton_Click;
             referenceLabel.Click += ReferenceLabel_Click;
 
             KeyDown += MainForm_KeyDown;
         }
 
+        // ==================================================
+        // DEFAULT REFERENCE
+        // ==================================================
+
         private void LoadDefaultDictionary()
         {
-            string path = Path.Combine(Application.StartupPath, "PS.txt");
+            string path = Path.Combine(
+                Application.StartupPath,
+                "PS.txt");
 
             if (!File.Exists(path))
             {
                 dictionary.Clear();
                 referenceLoaded = false;
                 activeReferenceName = "Default";
+
                 UpdateReferenceLabel();
+                UpdateExportButton();
                 ClearSearchResults();
+
                 pronunciationLabel.Text = "";
                 statusLabel.Text = "";
+
                 return;
             }
 
             try
             {
-                dictionary = ReadDictionaryFile(path);
+                List<WordEntry> loaded = ReadDictionaryFile(path);
+
+                dictionary.Clear();
+                dictionary.AddRange(loaded);
+
                 referenceLoaded = true;
                 activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
+                UpdateExportButton();
                 ClearSearchResults();
-                UpdatePronunciationPreview();
+
+                pronunciationLabel.Text = "";
                 statusLabel.Text = "";
             }
             catch
@@ -344,7 +508,9 @@ namespace Moughoof
                 activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
+                UpdateExportButton();
                 ClearSearchResults();
+
                 pronunciationLabel.Text = "";
                 statusLabel.Text = "";
             }
@@ -352,9 +518,12 @@ namespace Moughoof
 
         private List<WordEntry> ReadDictionaryFile(string path)
         {
-            List<WordEntry> entries = new List<WordEntry>();
+            List<WordEntry> loaded = new List<WordEntry>();
 
-            using (StreamReader reader = new StreamReader(path, Encoding.UTF8, true))
+            using (StreamReader reader = new StreamReader(
+                path,
+                Encoding.UTF8,
+                true))
             {
                 string line;
 
@@ -369,24 +538,33 @@ namespace Moughoof
                         continue;
 
                     string persian = line.Substring(0, tabIndex).Trim();
-                    string pronunciation = line.Substring(tabIndex + 1).Trim();
+                    string pronunciation =
+                        line.Substring(tabIndex + 1).Trim();
 
-                    if (persian.Length == 0 || pronunciation.Length == 0)
+                    if (string.IsNullOrWhiteSpace(persian) ||
+                        string.IsNullOrWhiteSpace(pronunciation))
+                    {
                         continue;
+                    }
 
-                    entries.Add(new WordEntry(persian, pronunciation));
+                    loaded.Add(new WordEntry(persian, pronunciation));
                 }
             }
 
-            return entries;
+            return loaded;
         }
+
+        // ==================================================
+        // LOAD CUSTOM REFERENCE
+        // ==================================================
 
         private void ReferenceLabel_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
                 dialog.Title = "Load Reference";
-                dialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                dialog.Filter =
+                    "Text files (*.txt)|*.txt|All files (*.*)|*.*";
                 dialog.CheckFileExists = true;
                 dialog.Multiselect = false;
 
@@ -395,15 +573,20 @@ namespace Moughoof
 
                 try
                 {
-                    List<WordEntry> loadedDictionary =
+                    List<WordEntry> loaded =
                         ReadDictionaryFile(dialog.FileName);
 
-                    dictionary = loadedDictionary;
+                    dictionary.Clear();
+                    dictionary.AddRange(loaded);
+
                     referenceLoaded = true;
-                    activeReferenceName = Path.GetFileName(dialog.FileName);
+                    activeReferenceName =
+                        Path.GetFileName(dialog.FileName);
 
                     UpdateReferenceLabel();
+                    UpdateExportButton();
                     ClearSearchResults();
+
                     UpdatePronunciationPreview();
                     statusLabel.Text = "";
                 }
@@ -411,10 +594,11 @@ namespace Moughoof
                 {
                     MessageBox.Show(
                         this,
-                        "Could not load the reference.\n\n" + ex.Message,
-                        "Load Reference",
+                        "Could not load the selected reference.\r\n\r\n" +
+                        ex.Message,
+                        "Moughoof",
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                        MessageBoxIcon.Warning);
                 }
             }
         }
@@ -435,12 +619,67 @@ namespace Moughoof
             referenceLabel.AutoSize = true;
         }
 
+        private void UpdateExportButton()
+        {
+            exportButton.Enabled = referenceLoaded;
+
+            exportButton.ForeColor = referenceLoaded
+                ? foregroundColor
+                : Color.Gray;
+        }
+
+        // ==================================================
+        // INPUT
+        // ==================================================
+
+        private void InputBox_Enter(object sender, EventArgs e)
+        {
+            if (inputBox.Text == "Input word")
+            {
+                inputBox.Clear();
+                inputBox.ForeColor = foregroundColor;
+            }
+        }
+
+        private void InputBox_TextChanged(object sender, EventArgs e)
+        {
+            if (isUpdating)
+                return;
+
+            UpdatePronunciationPreview();
+        }
+
+        private string GetInputWord()
+        {
+            string word = inputBox.Text.Trim();
+
+            if (word == "Input word")
+                return "";
+
+            return word;
+        }
+
+        // ==================================================
+        // PERSIAN LOOKUP
+        // ==================================================
+
         private string NormalizePersianLookup(string value)
         {
             if (value == null)
                 return "";
 
             return value.Replace('\u200C', ' ').Trim();
+        }
+
+        private WordEntry FindExactWord(string word)
+        {
+            string normalizedWord = NormalizePersianLookup(word);
+
+            return dictionary.FirstOrDefault(
+                item => string.Equals(
+                    NormalizePersianLookup(item.Persian),
+                    normalizedWord,
+                    StringComparison.Ordinal));
         }
 
         private void UpdatePronunciationPreview()
@@ -451,20 +690,16 @@ namespace Moughoof
                 return;
             }
 
-            string input = NormalizePersianLookup(inputBox.Text);
-
-            if (input.Length == 0)
-            {
-                pronunciationLabel.Text = "";
-                return;
-            }
-
-            WordEntry entry = dictionary.FirstOrDefault(
-                item => NormalizePersianLookup(item.Persian) == input);
+            string word = GetInputWord();
+            WordEntry entry = FindExactWord(word);
 
             pronunciationLabel.Text =
                 entry == null ? "" : entry.Pronunciation;
         }
+
+        // ==================================================
+        // KEYBOARD
+        // ==================================================
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
@@ -472,17 +707,30 @@ namespace Moughoof
             {
                 e.SuppressKeyPress = true;
                 e.Handled = true;
+
                 PerformSearch();
                 return;
             }
 
-            if (e.Control && e.KeyCode == Keys.C &&
-                resultsListBox.SelectedItem is WordEntry)
+            if (e.Control && e.KeyCode == Keys.C)
             {
-                CopySelectedPersian();
-                e.SuppressKeyPress = true;
-                e.Handled = true;
+                if (resultsListBox.SelectedItem is WordEntry)
+                {
+                    CopySelectedPersian();
+
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                }
             }
+        }
+
+        // ==================================================
+        // SEARCH
+        // ==================================================
+
+        private void SearchButton_Click(object sender, EventArgs e)
+        {
+            PerformSearch();
         }
 
         private void PerformSearch()
@@ -490,75 +738,121 @@ namespace Moughoof
             if (!referenceLoaded)
             {
                 ClearSearchResults();
-                pronunciationLabel.Text = "";
                 statusLabel.Text = "";
+                pronunciationLabel.Text = "";
                 return;
             }
 
-            string input = NormalizePersianLookup(inputBox.Text);
-            lastSearchWord = input;
+            string word = GetInputWord();
 
-            if (input.Length == 0)
+            if (string.IsNullOrWhiteSpace(word))
             {
+                lastSearchWord = "";
+
                 ClearSearchResults();
                 pronunciationLabel.Text = "";
                 statusLabel.Text = "";
+
                 return;
             }
 
-            WordEntry sourceEntry = dictionary.FirstOrDefault(
-                item => NormalizePersianLookup(item.Persian) == input);
+            WordEntry source = FindExactWord(word);
 
-            if (sourceEntry == null)
+            if (source == null)
             {
-                ClearSearchResults();
+                lastSearchWord = word;
+
+                currentResults.Clear();
+                RefreshResults();
+
                 pronunciationLabel.Text = "";
                 statusLabel.Text = "Word not found";
+
                 return;
             }
 
-            pronunciationLabel.Text = sourceEntry.Pronunciation;
+            lastSearchWord = word;
+            pronunciationLabel.Text = source.Pronunciation;
 
-            string pronunciation = sourceEntry.Pronunciation;
-            int count = (int)matchCount.Value;
+            string pronunciation = source.Pronunciation;
+            int count = (int)matchCountBox.Value;
+
+            count = Math.Min(count, pronunciation.Length);
 
             string pattern;
 
             if (firstRadio.Checked)
             {
-                pattern = pronunciation.Substring(
-                    0, Math.Min(count, pronunciation.Length));
+                pattern = pronunciation.Substring(0, count);
             }
             else
             {
                 pattern = pronunciation.Substring(
-                    Math.Max(0, pronunciation.Length - count));
+                    pronunciation.Length - count,
+                    count);
             }
 
             currentResults = dictionary
                 .Where(item =>
-                    NormalizePersianLookup(item.Persian) != input &&
-                    (firstRadio.Checked
-                        ? item.Pronunciation.StartsWith(
-                            pattern, StringComparison.Ordinal)
-                        : item.Pronunciation.EndsWith(
-                            pattern, StringComparison.Ordinal)))
+                    !string.Equals(
+                        NormalizePersianLookup(item.Persian),
+                        NormalizePersianLookup(source.Persian),
+                        StringComparison.Ordinal))
+                .Where(item =>
+                {
+                    if (firstRadio.Checked)
+                    {
+                        return item.Pronunciation.StartsWith(
+                            pattern,
+                            StringComparison.Ordinal);
+                    }
+
+                    return item.Pronunciation.EndsWith(
+                        pattern,
+                        StringComparison.Ordinal);
+                })
                 .ToList();
 
             SortCurrentResults();
             RefreshResults();
         }
 
-        private void MatchOptionChanged(object sender, EventArgs e)
+        private void ClearSearchResults()
+        {
+            lastSearchWord = "";
+            currentResults.Clear();
+            RefreshResults();
+        }
+
+        // ==================================================
+        // MATCH OPTIONS - REAL TIME
+        // ==================================================
+
+        private void MatchOption_Changed(object sender, EventArgs e)
         {
             if (isUpdating)
                 return;
 
-            if (lastSearchWord.Length > 0)
+            if (!string.IsNullOrEmpty(lastSearchWord))
                 PerformSearch();
         }
 
-        private void SortOptionChanged(object sender, EventArgs e)
+        private void MatchCountBox_ValueChanged(
+            object sender,
+            EventArgs e)
+        {
+            if (isUpdating)
+                return;
+
+            if (!string.IsNullOrEmpty(lastSearchWord))
+                PerformSearch();
+        }
+
+        // ==================================================
+        // SORTING - REAL TIME
+        // ==================================================
+
+        private void SortOption_Changed(object sender, EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -572,62 +866,79 @@ namespace Moughoof
             if (alphabetRadio.Checked)
             {
                 currentResults = currentResults
-                    .OrderBy(item => item.Persian, StringComparer.Ordinal)
+                    .OrderBy(
+                        item => item.Persian,
+                        StringComparer.CurrentCulture)
                     .ToList();
             }
             else if (lengthRadio.Checked)
             {
                 currentResults = currentResults
                     .OrderBy(item => item.Persian.Length)
-                    .ThenBy(item => item.Persian, StringComparer.Ordinal)
+                    .ThenBy(
+                        item => item.Persian,
+                        StringComparer.CurrentCulture)
                     .ToList();
             }
         }
 
+        // ==================================================
+        // RESULTS
+        // ==================================================
+
         private void RefreshResults()
         {
             isUpdating = true;
-
             resultsListBox.BeginUpdate();
-            resultsListBox.Items.Clear();
 
-            foreach (WordEntry entry in currentResults)
-                resultsListBox.Items.Add(entry);
+            try
+            {
+                resultsListBox.Items.Clear();
 
-            resultsListBox.EndUpdate();
+                foreach (WordEntry item in currentResults)
+                    resultsListBox.Items.Add(item);
 
-            statusLabel.Text = currentResults.Count + " Results";
+                statusLabel.Text = referenceLoaded
+                    ? currentResults.Count + " Results"
+                    : "";
+            }
+            finally
+            {
+                resultsListBox.EndUpdate();
+                isUpdating = false;
+            }
+
             resultsListBox.Invalidate();
-
-            isUpdating = false;
         }
 
-        private void ClearSearchResults()
-        {
-            isUpdating = true;
+        // ==================================================
+        // COPY SELECTED WORD
+        // ==================================================
 
-            currentResults.Clear();
-            resultsListBox.Items.Clear();
-
-            isUpdating = false;
-        }
-
-        private void ResultsListBox_MouseDown(object sender, MouseEventArgs e)
+        private void ResultsListBox_MouseDown(
+            object sender,
+            MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Right)
                 return;
 
             int index = resultsListBox.IndexFromPoint(e.Location);
 
-            if (index >= 0)
+            if (index >= 0 && index < resultsListBox.Items.Count)
                 resultsListBox.SelectedIndex = index;
             else
                 resultsListBox.ClearSelected();
         }
 
+        private void CopyMenuItem_Click(object sender, EventArgs e)
+        {
+            CopySelectedPersian();
+        }
+
         private void CopySelectedPersian()
         {
-            WordEntry selected = resultsListBox.SelectedItem as WordEntry;
+            WordEntry selected =
+                resultsListBox.SelectedItem as WordEntry;
 
             if (selected == null)
                 return;
@@ -640,30 +951,28 @@ namespace Moughoof
             {
                 MessageBox.Show(
                     this,
-                    "Could not copy the selected word.\n\n" + ex.Message,
-                    "Copy",
+                    "Could not copy the selected word.\r\n\r\n" +
+                    ex.Message,
+                    "Moughoof",
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                    MessageBoxIcon.Warning);
             }
         }
 
-        private void ExportCurrentResults()
+        // ==================================================
+        // EXPORT CURRENT LISTBOX CONTENTS
+        // ==================================================
+
+        private void ExportButton_Click(object sender, EventArgs e)
         {
             if (!referenceLoaded)
-            {
-                MessageBox.Show(
-                    this,
-                    "No reference is loaded.",
-                    "Export",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
                 return;
-            }
 
-            List<WordEntry> itemsToExport = resultsListBox.Items
-                .Cast<object>()
-                .OfType<WordEntry>()
-                .ToList();
+            List<WordEntry> itemsToExport =
+                resultsListBox.Items
+                    .Cast<object>()
+                    .OfType<WordEntry>()
+                    .ToList();
 
             if (itemsToExport.Count == 0)
             {
@@ -673,32 +982,29 @@ namespace Moughoof
                     "Export",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
+
                 return;
             }
 
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
                 dialog.Title = "Export Current Results";
-                dialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                dialog.Filter =
+                    "Text files (*.txt)|*.txt|All files (*.*)|*.*";
                 dialog.DefaultExt = "txt";
                 dialog.AddExtension = true;
                 dialog.OverwritePrompt = true;
 
-                string defaultName = activeReferenceName;
+                string suggestedName = "Results.txt";
 
-                if (string.IsNullOrWhiteSpace(defaultName) ||
-                    defaultName == "Default")
+                if (!string.IsNullOrWhiteSpace(activeReferenceName) &&
+                    activeReferenceName != "Default")
                 {
-                    defaultName = "Results";
+                    suggestedName = Path.GetFileNameWithoutExtension(
+                        activeReferenceName) + "_Results.txt";
                 }
 
-                if (!defaultName.EndsWith(
-                    ".txt", StringComparison.OrdinalIgnoreCase))
-                {
-                    defaultName += ".txt";
-                }
-
-                dialog.FileName = defaultName;
+                dialog.FileName = suggestedName;
 
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
@@ -706,87 +1012,115 @@ namespace Moughoof
                 try
                 {
                     using (StreamWriter writer = new StreamWriter(
-                        dialog.FileName, false, new UTF8Encoding(false)))
+                        dialog.FileName,
+                        false,
+                        new UTF8Encoding(false)))
                     {
-                        foreach (WordEntry entry in itemsToExport)
+                        foreach (WordEntry item in itemsToExport)
                         {
-                            writer.Write(entry.Persian);
+                            writer.Write(item.Persian);
                             writer.Write('\t');
-                            writer.WriteLine(entry.Pronunciation);
+                            writer.WriteLine(item.Pronunciation);
                         }
                     }
 
                     statusLabel.Text =
-                        itemsToExport.Count + " results exported";
+                        itemsToExport.Count + " Results Exported";
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(
                         this,
-                        "Could not export the results.\n\n" + ex.Message,
-                        "Export",
+                        "Could not export the results.\r\n\r\n" +
+                        ex.Message,
+                        "Moughoof",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
                 }
             }
         }
 
-        private void ResultsListBox_DrawItem(object sender, DrawItemEventArgs e)
+        // ==================================================
+        // OWNER-DRAW RESULTS LIST
+        // ==================================================
+
+        private void ResultsListBox_DrawItem(
+            object sender,
+            DrawItemEventArgs e)
         {
-            if (e.Index < 0 || e.Index >= resultsListBox.Items.Count)
+            if (e.Index < 0 ||
+                e.Index >= resultsListBox.Items.Count)
+            {
+                return;
+            }
+
+            WordEntry item =
+                resultsListBox.Items[e.Index] as WordEntry;
+
+            if (item == null)
                 return;
 
-            bool selected = (e.State & DrawItemState.Selected) ==
-                            DrawItemState.Selected;
+            bool selected =
+                (e.State & DrawItemState.Selected) ==
+                DrawItemState.Selected;
 
-            Color background = selected
+            Color itemBackground = selected
                 ? selectedColor
                 : (e.Index % 2 == 0 ? rowColor1 : rowColor2);
 
-            using (SolidBrush brush = new SolidBrush(background))
+            using (SolidBrush brush = new SolidBrush(itemBackground))
             {
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
-            WordEntry entry = resultsListBox.Items[e.Index] as WordEntry;
+            int persianWidth = (int)(e.Bounds.Width * 0.6);
 
-            if (entry != null)
+            Rectangle persianBounds = new Rectangle(
+                e.Bounds.Left + 4,
+                e.Bounds.Top,
+                persianWidth - 8,
+                e.Bounds.Height);
+
+            Rectangle latinBounds = new Rectangle(
+                e.Bounds.Left + persianWidth,
+                e.Bounds.Top,
+                e.Bounds.Width - persianWidth - 6,
+                e.Bounds.Height);
+
+            using (Font persianFont = new Font(
+                "Segoe UI",
+                11f,
+                FontStyle.Regular))
             {
-                int persianWidth = (int)(e.Bounds.Width * 0.60);
-
-                Rectangle persianRect = new Rectangle(
-                    e.Bounds.X + 5,
-                    e.Bounds.Y,
-                    persianWidth - 10,
-                    e.Bounds.Height);
-
-                Rectangle pronunciationRect = new Rectangle(
-                    e.Bounds.X + persianWidth,
-                    e.Bounds.Y,
-                    e.Bounds.Width - persianWidth - 5,
-                    e.Bounds.Height);
-
                 TextRenderer.DrawText(
                     e.Graphics,
-                    entry.Persian,
-                    new Font("Segoe UI", 11F),
-                    persianRect,
+                    item.Persian,
+                    persianFont,
+                    persianBounds,
                     foregroundColor,
                     TextFormatFlags.Right |
                     TextFormatFlags.VerticalCenter |
-                    TextFormatFlags.EndEllipsis |
-                    TextFormatFlags.NoPadding);
+                    TextFormatFlags.NoPrefix |
+                    TextFormatFlags.SingleLine |
+                    TextFormatFlags.EndEllipsis);
+            }
 
+            using (Font latinFont = new Font(
+                "Segoe UI",
+                9.5f,
+                FontStyle.Regular))
+            {
                 TextRenderer.DrawText(
                     e.Graphics,
-                    entry.Pronunciation,
-                    new Font("Segoe UI", 9.5F),
-                    pronunciationRect,
+                    item.Pronunciation,
+                    latinFont,
+                    latinBounds,
                     foregroundColor,
                     TextFormatFlags.Left |
                     TextFormatFlags.VerticalCenter |
-                    TextFormatFlags.EndEllipsis |
-                    TextFormatFlags.NoPadding);
+                    TextFormatFlags.NoPrefix |
+                    TextFormatFlags.SingleLine |
+                    TextFormatFlags.EndEllipsis);
             }
 
             e.DrawFocusRectangle();
