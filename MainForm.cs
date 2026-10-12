@@ -1411,92 +1411,101 @@ namespace Moughoof
             return value.Trim();
         }
 
-        // =========================================================
-        // OWNER-DRAW RESULTS
-        // Pronunciation: left column, centered
-        // Persian: right column, centered
-        // =========================================================
+// ================================================
+// OWNER-DRAW RESULTS — V1.7
+// ================================================
 
-        private void ResultsListBox_DrawItem(
-            object sender,
-            DrawItemEventArgs e)
-        {
-            if (e.Index < 0 ||
-                e.Index >= resultsListBox.Items.Count)
-            {
-                return;
-            }
+private void ResultsListBox_DrawItem(
+    object sender,
+    DrawItemEventArgs e)
+{
+    if (e.Index < 0 ||
+        e.Index >= resultsListBox.Items.Count)
+    {
+        return;
+    }
 
-            WordEntry item =
-                resultsListBox.Items[e.Index] as WordEntry;
+    WordEntry item =
+        resultsListBox.Items[e.Index] as WordEntry;
 
-            if (item == null)
-                return;
+    if (item == null)
+        return;
 
-            bool selected =
-                (e.State & DrawItemState.Selected) ==
-                DrawItemState.Selected;
+    bool selected =
+        (e.State & DrawItemState.Selected) ==
+        DrawItemState.Selected;
 
-            Color background = selected
-                ? selectedColor
-                : (e.Index % 2 == 0
-                    ? rowColor1
-                    : rowColor2);
+    Color backgroundColor = selected
+        ? selectedColor
+        : (e.Index % 2 == 0
+            ? rowColor1
+            : rowColor2);
 
-            using (SolidBrush backgroundBrush =
-                new SolidBrush(background))
-            {
-                e.Graphics.FillRectangle(
-                    backgroundBrush,
-                    e.Bounds);
-            }
+    using (SolidBrush brush =
+        new SolidBrush(backgroundColor))
+    {
+        e.Graphics.FillRectangle(
+            brush,
+            e.Bounds);
+    }
 
-            Rectangle bounds = e.Bounds;
+    // Column 1: Latin pronunciation — left aligned
+    // Column 2: Persian word — right aligned
 
-            // Keep two columns with the same proportions:
-            // pronunciation on the left, Persian on the right.
-            int leftWidth = (int)(bounds.Width * 0.40);
-            int rightWidth = bounds.Width - leftWidth;
+    int column1Width =
+        e.Bounds.Width / 2;
 
-            Rectangle pronunciationBounds = new Rectangle(
-                bounds.Left + 4,
-                bounds.Top,
-                leftWidth - 8,
-                bounds.Height);
+    Rectangle latinBounds = new Rectangle(
+        e.Bounds.Left + 8,
+        e.Bounds.Top,
+        column1Width - 12,
+        e.Bounds.Height);
 
-            Rectangle persianBounds = new Rectangle(
-                bounds.Left + leftWidth + 4,
-                bounds.Top,
-                rightWidth - 8,
-                bounds.Height);
+    Rectangle persianBounds = new Rectangle(
+        e.Bounds.Left + column1Width,
+        e.Bounds.Top,
+        e.Bounds.Width - column1Width - 8,
+        e.Bounds.Height);
 
-            // Center pronunciation horizontally in column 1.
-            TextRenderer.DrawText(
-                e.Graphics,
-                item.Pronunciation,
-                pronunciationFont,
-                pronunciationBounds,
-                selected ? Color.White : Color.LightGray,
-                TextFormatFlags.HorizontalCenter |
-                TextFormatFlags.VerticalCenter |
-                TextFormatFlags.EndEllipsis |
-                TextFormatFlags.NoPrefix);
+    using (Font latinFont = new Font(
+        "Segoe UI",
+        9.5f,
+        FontStyle.Regular))
+    {
+        TextRenderer.DrawText(
+            e.Graphics,
+            item.Pronunciation,
+            latinFont,
+            latinBounds,
+            Color.White,
+            TextFormatFlags.Left |
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPrefix |
+            TextFormatFlags.SingleLine |
+            TextFormatFlags.EndEllipsis);
+    }
 
-            // Center Persian horizontally in column 2.
-            TextRenderer.DrawText(
-                e.Graphics,
-                item.Persian,
-                preferredWordFont,
-                persianBounds,
-                Color.White,
-                TextFormatFlags.HorizontalCenter |
-                TextFormatFlags.VerticalCenter |
-                TextFormatFlags.EndEllipsis |
-                TextFormatFlags.NoPrefix |
-                TextFormatFlags.RightToLeft);
+    using (Font persianFont = new Font(
+        "Segoe UI",
+        11f,
+        FontStyle.Regular))
+    {
+        TextRenderer.DrawText(
+            e.Graphics,
+            item.Persian,
+            persianFont,
+            persianBounds,
+            Color.White,
+            TextFormatFlags.Right |
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPrefix |
+            TextFormatFlags.SingleLine |
+            TextFormatFlags.EndEllipsis |
+            TextFormatFlags.RightToLeft);
+    }
 
-            e.DrawFocusRectangle();
-        }
+    e.DrawFocusRectangle();
+}
 
         // =========================================================
         // CLEANUP
