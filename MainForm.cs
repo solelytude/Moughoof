@@ -1412,7 +1412,7 @@ namespace Moughoof
         }
 
 // ================================================
-// OWNER-DRAW RESULTS — V1.7
+// OWNER-DRAW RESULTS
 // ================================================
 
 private void ResultsListBox_DrawItem(
@@ -1449,24 +1449,45 @@ private void ResultsListBox_DrawItem(
             e.Bounds);
     }
 
-    // Column 1: Latin pronunciation — left aligned
-    // Column 2: Persian word — right aligned
+    // Persian column: 60% of the row, right-aligned.
 
-    int column1Width =
-        e.Bounds.Width / 2;
-
-    Rectangle latinBounds = new Rectangle(
-        e.Bounds.Left + 8,
-        e.Bounds.Top,
-        column1Width - 12,
-        e.Bounds.Height);
+    int persianWidth =
+        (int)(e.Bounds.Width * 0.6);
 
     Rectangle persianBounds = new Rectangle(
-        e.Bounds.Left + column1Width,
+        e.Bounds.Left + 4,
         e.Bounds.Top,
-        e.Bounds.Width - column1Width - 8,
+        persianWidth - 8,
         e.Bounds.Height);
 
+    // Latin pronunciation column: remaining width,
+    // left-aligned.
+
+    Rectangle latinBounds = new Rectangle(
+        e.Bounds.Left + persianWidth,
+        e.Bounds.Top,
+        e.Bounds.Width - persianWidth - 6,
+        e.Bounds.Height);
+
+    // Keep the currently selected Persian font.
+    using (Font persianFont = new Font(
+        inputBox.Font.FontFamily,
+        11f,
+        FontStyle.Regular))
+    {
+        TextRenderer.DrawText(
+            e.Graphics,
+            item.Persian,
+            persianFont,
+            persianBounds,
+            Color.White,
+            TextFormatFlags.Right |
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPrefix |
+            TextFormatFlags.SingleLine);
+    }
+
+    // Keep the current Latin font.
     using (Font latinFont = new Font(
         "Segoe UI",
         9.5f,
@@ -1481,27 +1502,7 @@ private void ResultsListBox_DrawItem(
             TextFormatFlags.Left |
             TextFormatFlags.VerticalCenter |
             TextFormatFlags.NoPrefix |
-            TextFormatFlags.SingleLine |
-            TextFormatFlags.EndEllipsis);
-    }
-
-    using (Font persianFont = new Font(
-        "Segoe UI",
-        11f,
-        FontStyle.Regular))
-    {
-        TextRenderer.DrawText(
-            e.Graphics,
-            item.Persian,
-            persianFont,
-            persianBounds,
-            Color.White,
-            TextFormatFlags.Right |
-            TextFormatFlags.VerticalCenter |
-            TextFormatFlags.NoPrefix |
-            TextFormatFlags.SingleLine |
-            TextFormatFlags.EndEllipsis |
-            TextFormatFlags.RightToLeft);
+            TextFormatFlags.SingleLine);
     }
 
     e.DrawFocusRectangle();
