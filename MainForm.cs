@@ -1,7 +1,16 @@
 
+/* ======================== MOUGHOOf V1.5 ========================
+   Updates:
+   - Case-sensitive English pronunciation lookup
+   - Refresh Reference label for reloading PS.txt
+   - Font priority: Vazirmatn > B Nazanin > system default
+   - Preserve existing search, sorting, copy, import and export behavior
+   =============================================================== */
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,9 +21,8 @@ namespace Moughoof
     public class MainForm : Form
     {
         private Panel inputPanel;
-        private Panel matchOptionsPanel;
-        private Panel divider;
         private Panel outputPanel;
+        private Panel matchOptionsPanel;
         private Panel sortOptionsPanel;
 
         private TextBox inputBox;
@@ -27,17 +35,21 @@ namespace Moughoof
         private Button searchButton;
 
         private Label sortLabel;
-        private RadioButton lengthRadio;
         private RadioButton alphabetRadio;
-        private Label statusLabel;
+        private RadioButton lengthRadio;
 
+        private Label statusLabel;
         private ListBox resultsListBox;
 
-        private Button exportButton;
         private Label referenceLabel;
+        private Label refreshReferenceLabel;
+        private Button exportButton;
 
         private ContextMenuStrip resultsContextMenu;
         private ToolStripMenuItem copyMenuItem;
+
+        private readonly Color backgroundColor =
+            Color.FromArgb(32, 32, 32);
 
         private readonly Color rowColor1 =
             Color.FromArgb(40, 40, 40);
@@ -48,6 +60,12 @@ namespace Moughoof
         private readonly Color selectedColor =
             Color.FromArgb(65, 100, 145);
 
+        private readonly Color controlColor =
+            Color.FromArgb(45, 45, 45);
+
+        private readonly Color buttonColor =
+            Color.FromArgb(55, 55, 55);
+
         private readonly List<WordEntry> dictionary =
             new List<WordEntry>();
 
@@ -55,14 +73,17 @@ namespace Moughoof
             new List<WordEntry>();
 
         private string lastSearchWord = "";
-        private string activeReferenceName = "Default";
+        private WordEntry lastSearchEntry;
 
-        // The original matched database entry is retained for export.
-        // It is not added to the visible results ListBox.
-        private WordEntry lastSearchEntry = null;
+        private string activeReferenceName = "Default";
 
         private bool referenceLoaded = false;
         private bool isUpdating = false;
+
+        private Font preferredWordFont;
+        private Font preferredInputFont;
+        private Font pronunciationFont;
+        private Font fallbackFont;
 
         private class WordEntry
         {
@@ -76,69 +97,168 @@ namespace Moughoof
                 Persian = persian;
                 Pronunciation = pronunciation;
             }
+
+            public override string ToString()
+            {
+                return Persian;
+            }
         }
 
         public MainForm()
         {
             InitializeForm();
+            InitializeFonts();
             InitializeControls();
             ConnectEvents();
+
             LoadDefaultDictionary();
         }
 
-        // ================================================
+        // =========================================================
         // FORM
-        // ================================================
+        // =========================================================
 
         private void InitializeForm()
         {
             Text = "Moughoof";
 
-            ClientSize = new Size(460, 650);
-            MinimumSize = new Size(460, 530);
+            ClientSize = new Size(460, 670);
+            MinimumSize = new Size(460, 550);
             MaximumSize = new Size(460, 2000);
 
             MinimizeBox = true;
             MaximizeBox = false;
+
             FormBorderStyle = FormBorderStyle.Sizable;
 
-            BackColor = Color.FromArgb(32, 32, 32);
+            BackColor = backgroundColor;
             ForeColor = Color.White;
+
             Font = new Font("Segoe UI", 9f);
 
             KeyPreview = true;
         }
 
-        // ================================================
+        // =========================================================
+        // FONT SELECTION
+        // Priority: Vazirmatn > B Nazanin > System default
+        // =========================================================
+
+        private void InitializeFonts()
+        {
+            string selectedFont = Font.FontFamily.Name;
+
+            try
+            {
+                using (InstalledFontCollection installedFonts =
+                    new InstalledFontCollection())
+                {
+                    string[] availableFonts = installedFonts.Families
+                        .Select(family => family.Name)
+                        .ToArray();
+
+                    string vazirmatn = availableFonts.FirstOrDefault(
+                        name => string.Equals(
+                            name,
+                            "Vazirmatn",
+                            StringComparison.OrdinalIgnoreCase));
+
+                    string nazanin = availableFonts.FirstOrDefault(
+                        name =>
+                            string.Equals(
+                                name,
+                                "B Nazanin",
+                                StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(
+                                name,
+                                "B_Nazanin",
+                                StringComparison.OrdinalIgnoreCase));
+
+                    if (!string.IsNullOrEmpty(vazirmatn))
+                    {
+                        selectedFont = vazirmatn;
+                    }
+                    else if (!string.IsNullOrEmpty(nazanin))
+                    {
+                        selectedFont = nazanin;
+                    }
+                }
+            }
+            catch
+            {
+                // Keep the system's default font if font detection fails.
+            }
+
+            fallbackFont = new Font(Font.FontFamily, 9f);
+
+            preferredWordFont = CreateFontSafely(
+                selectedFont,
+                11f,
+                FontStyle.Regular,
+                fallbackFont);
+
+            preferredInputFont = CreateFontSafely(
+                selectedFont,
+                11.5f,
+                FontStyle.Bold,
+                fallbackFont);
+
+            pronunciationFont = CreateFontSafely(
+                "Segoe UI",
+                9.5f,
+                FontStyle.Regular,
+                fallbackFont);
+        }
+
+        private Font CreateFontSafely(
+            string familyName,
+            float size,
+            FontStyle style,
+            Font fallback)
+        {
+            try
+            {
+                using (FontFamily family = new FontFamily(familyName))
+                {
+                    if (family.IsStyleAvailable(style))
+                    {
+                        return new Font(family, size, style);
+                    }
+
+                    return new Font(family, size, FontStyle.Regular);
+                }
+            }
+            catch
+            {
+                return new Font(fallback.FontFamily, size, style);
+            }
+        }
+
+        // =========================================================
         // CONTROLS
-        // ================================================
+        // =========================================================
 
         private void InitializeControls()
         {
-            // INPUT PANEL
+            // INPUT AREA
 
             inputPanel = new Panel
             {
                 Location = new Point(10, 8),
                 Size = new Size(443, 95),
-                BackColor = BackColor
+                BackColor = backgroundColor
             };
 
             Controls.Add(inputPanel);
-
-            // INPUT BOX
 
             inputBox = new TextBox
             {
                 Location = new Point(0, 0),
                 Size = new Size(443, 31),
 
-                Font = new Font(
-                    "Segoe UI",
-                    11.5f,
-                    FontStyle.Bold),
+                Font = preferredInputFont,
 
-                BackColor = Color.FromArgb(45, 45, 45),
+                BackColor = controlColor,
                 ForeColor = Color.Gray,
                 BorderStyle = BorderStyle.FixedSingle,
 
@@ -148,8 +268,6 @@ namespace Moughoof
 
             inputPanel.Controls.Add(inputBox);
 
-            // PRONUNCIATION PREVIEW
-
             pronunciationLabel = new Label
             {
                 Location = new Point(0, 32),
@@ -157,6 +275,8 @@ namespace Moughoof
 
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
+
+                Font = pronunciationFont,
 
                 ForeColor = Color.LightGray,
                 BackColor = Color.Transparent
@@ -170,7 +290,7 @@ namespace Moughoof
             {
                 Location = new Point(0, 59),
                 Size = new Size(443, 30),
-                BackColor = BackColor
+                BackColor = backgroundColor
             };
 
             inputPanel.Controls.Add(matchOptionsPanel);
@@ -195,7 +315,6 @@ namespace Moughoof
                 Size = new Size(62, 24),
 
                 Text = "FIRST",
-
                 ForeColor = Color.White,
                 BackColor = Color.Transparent
             };
@@ -208,10 +327,8 @@ namespace Moughoof
                 Size = new Size(58, 24),
 
                 Text = "LAST",
-
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
-
                 Checked = true
             };
 
@@ -231,8 +348,6 @@ namespace Moughoof
 
             matchOptionsPanel.Controls.Add(matchCountBox);
 
-            // SEARCH BUTTON
-
             searchButton = new Button
             {
                 Location = new Point(367, 0),
@@ -241,7 +356,7 @@ namespace Moughoof
                 Text = "SEARCH",
 
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
+                BackColor = buttonColor,
                 ForeColor = Color.White
             };
 
@@ -252,21 +367,21 @@ namespace Moughoof
 
             // DIVIDER
 
-            divider = new Panel
+            Panel divider = new Panel
             {
                 Location = new Point(10, 105),
                 Size = new Size(443, 1),
-                BackColor = Color.FromArgb(85, 85, 85)
+                BackColor = Color.FromArgb(75, 75, 75)
             };
 
             Controls.Add(divider);
 
-            // OUTPUT PANEL
+            // RESULTS AREA
 
             outputPanel = new Panel
             {
                 Location = new Point(10, 109),
-                Size = new Size(443, 503),
+                Size = new Size(443, 488),
 
                 Anchor =
                     AnchorStyles.Top |
@@ -274,19 +389,18 @@ namespace Moughoof
                     AnchorStyles.Left |
                     AnchorStyles.Right,
 
-                BackColor = BackColor
+                BackColor = backgroundColor
             };
 
             Controls.Add(outputPanel);
 
             // SORT OPTIONS
-            // LENGTH is now the default selection.
 
             sortOptionsPanel = new Panel
             {
                 Location = new Point(0, 0),
                 Size = new Size(443, 28),
-                BackColor = BackColor
+                BackColor = backgroundColor
             };
 
             outputPanel.Controls.Add(sortOptionsPanel);
@@ -294,7 +408,7 @@ namespace Moughoof
             sortLabel = new Label
             {
                 Location = new Point(0, 0),
-                Size = new Size(50, 27),
+                Size = new Size(50, 26),
 
                 Text = "SORT",
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -308,13 +422,11 @@ namespace Moughoof
             lengthRadio = new RadioButton
             {
                 Location = new Point(55, 1),
-                Size = new Size(62, 24),
+                Size = new Size(65, 24),
 
                 Text = "LENGTH",
-
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
-
                 Checked = true
             };
 
@@ -326,16 +438,12 @@ namespace Moughoof
                 Size = new Size(105, 24),
 
                 Text = "ALPHABET",
-
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
-
                 Checked = false
             };
 
             sortOptionsPanel.Controls.Add(alphabetRadio);
-
-            // RESULTS COUNT
 
             statusLabel = new Label
             {
@@ -358,7 +466,7 @@ namespace Moughoof
             resultsListBox = new ListBox
             {
                 Location = new Point(0, 30),
-                Size = new Size(443, 470),
+                Size = new Size(443, 458),
 
                 Anchor =
                     AnchorStyles.Top |
@@ -375,24 +483,26 @@ namespace Moughoof
                 ItemHeight = 27,
                 IntegralHeight = false,
 
-                Font = new Font("Segoe UI", 10f),
+                Font = preferredWordFont,
 
                 SelectionMode = SelectionMode.One
             };
 
             outputPanel.Controls.Add(resultsListBox);
 
-            // DATABASE REFERENCE
+            // DATABASE REFERENCE LABEL
 
             referenceLabel = new Label
             {
-                Location = new Point(10, 620),
-
-                AutoSize = true,
+                Location = new Point(10, 601),
+                Size = new Size(350, 22),
 
                 Anchor =
                     AnchorStyles.Bottom |
                     AnchorStyles.Left,
+
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
 
                 Text = "Reference Not Found",
 
@@ -408,11 +518,43 @@ namespace Moughoof
 
             Controls.Add(referenceLabel);
 
-            // EXPORT BUTTON
+            // REFRESH REFERENCE LABEL
+
+            refreshReferenceLabel = new Label
+            {
+                Location = new Point(10, 625),
+                Size = new Size(350, 22),
+
+                Anchor =
+                    AnchorStyles.Bottom |
+                    AnchorStyles.Left,
+
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+
+                Text = "Refresh Reference",
+
+                ForeColor = Color.LightSkyBlue,
+                BackColor = Color.Transparent,
+
+                Cursor = Cursors.Hand,
+
+                // Disabled initially. Enabled after loading
+                // a custom reference instead of PS.txt.
+                Enabled = false
+            };
+
+            refreshReferenceLabel.Font = new Font(
+                refreshReferenceLabel.Font,
+                FontStyle.Underline);
+
+            Controls.Add(refreshReferenceLabel);
+
+            // EXPORT
 
             exportButton = new Button
             {
-                Location = new Point(373, 615),
+                Location = new Point(373, 611),
                 Size = new Size(80, 28),
 
                 Anchor =
@@ -422,10 +564,8 @@ namespace Moughoof
                 Text = "EXPORT",
 
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 55),
-                ForeColor = Color.White,
-
-                Enabled = false
+                BackColor = buttonColor,
+                ForeColor = Color.White
             };
 
             exportButton.FlatAppearance.BorderColor =
@@ -433,7 +573,7 @@ namespace Moughoof
 
             Controls.Add(exportButton);
 
-            // RIGHT-CLICK COPY MENU
+            // RIGHT-CLICK MENU
 
             resultsContextMenu = new ContextMenuStrip();
 
@@ -445,9 +585,9 @@ namespace Moughoof
                 resultsContextMenu;
         }
 
-        // ================================================
+        // =========================================================
         // EVENTS
-        // ================================================
+        // =========================================================
 
         private void ConnectEvents()
         {
@@ -483,12 +623,15 @@ namespace Moughoof
             referenceLabel.Click +=
                 ReferenceLabel_Click;
 
+            refreshReferenceLabel.Click +=
+                RefreshReferenceLabel_Click;
+
             KeyDown += MainForm_KeyDown;
         }
 
-        // ================================================
-        // DEFAULT DATABASE
-        // ================================================
+        // =========================================================
+        // DEFAULT REFERENCE: PS.txt
+        // =========================================================
 
         private void LoadDefaultDictionary()
         {
@@ -504,7 +647,7 @@ namespace Moughoof
                 activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
-                UpdateExportButton();
+                UpdateRefreshReferenceLabel();
                 ClearSearchResults();
 
                 pronunciationLabel.Text = "";
@@ -518,14 +661,32 @@ namespace Moughoof
                 List<WordEntry> loaded =
                     ReadDictionaryFile(path);
 
+                if (loaded.Count == 0)
+                {
+                    dictionary.Clear();
+
+                    referenceLoaded = false;
+                    activeReferenceName = "Default";
+
+                    UpdateReferenceLabel();
+                    UpdateRefreshReferenceLabel();
+                    ClearSearchResults();
+
+                    pronunciationLabel.Text = "";
+                    statusLabel.Text = "";
+
+                    return;
+                }
+
                 dictionary.Clear();
                 dictionary.AddRange(loaded);
 
-                referenceLoaded = dictionary.Count > 0;
-                activeReferenceName = "Default";
+                referenceLoaded = true;
+                activeReferenceName = "PS.txt";
 
                 UpdateReferenceLabel();
-                UpdateExportButton();
+                UpdateRefreshReferenceLabel();
+
                 ClearSearchResults();
                 UpdatePronunciationPreview();
 
@@ -539,7 +700,7 @@ namespace Moughoof
                 activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
-                UpdateExportButton();
+                UpdateRefreshReferenceLabel();
                 ClearSearchResults();
 
                 pronunciationLabel.Text = "";
@@ -547,13 +708,14 @@ namespace Moughoof
             }
         }
 
-        // ================================================
-        // READ DATABASE
-        // ================================================
+        // =========================================================
+        // READ DICTIONARY FILE
+        // =========================================================
 
         private List<WordEntry> ReadDictionaryFile(string path)
         {
-            List<WordEntry> loaded = new List<WordEntry>();
+            List<WordEntry> loaded =
+                new List<WordEntry>();
 
             using (StreamReader reader = new StreamReader(
                 path,
@@ -566,8 +728,6 @@ namespace Moughoof
                 {
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
-
-                    line = line.TrimStart('\uFEFF');
 
                     int tabIndex = line.IndexOf('\t');
 
@@ -596,9 +756,9 @@ namespace Moughoof
             return loaded;
         }
 
-        // ================================================
-        // IMPORT DATABASE
-        // ================================================
+        // =========================================================
+        // LOAD CUSTOM REFERENCE
+        // =========================================================
 
         private void ReferenceLabel_Click(
             object sender,
@@ -625,12 +785,10 @@ namespace Moughoof
                     if (loaded.Count == 0)
                     {
                         MessageBox.Show(
-                            "No valid entries were found in this file.\r\n\r\n" +
-                            "Each line must contain a Persian word, a TAB, " +
-                            "and its pronunciation.",
+                            "The selected file contains no valid dictionary entries.",
                             "Moughoof",
                             MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
+                            MessageBoxIcon.Information);
 
                         return;
                     }
@@ -643,14 +801,10 @@ namespace Moughoof
                     activeReferenceName =
                         Path.GetFileName(dialog.FileName);
 
-                    lastSearchWord = "";
-                    lastSearchEntry = null;
-                    currentResults.Clear();
-
                     UpdateReferenceLabel();
-                    UpdateExportButton();
+                    UpdateRefreshReferenceLabel();
 
-                    RefreshResults();
+                    ClearSearchResults();
                     UpdatePronunciationPreview();
 
                     statusLabel.Text = "";
@@ -664,6 +818,72 @@ namespace Moughoof
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
                 }
+            }
+        }
+
+        // =========================================================
+        // REFRESH REFERENCE: RELOAD PS.txt
+        // =========================================================
+
+        private void RefreshReferenceLabel_Click(
+            object sender,
+            EventArgs e)
+        {
+            if (!refreshReferenceLabel.Enabled)
+                return;
+
+            string path = Path.Combine(
+                Application.StartupPath,
+                "PS.txt");
+
+            if (!File.Exists(path))
+            {
+                MessageBox.Show(
+                    "PS.txt was not found in the application folder.",
+                    "Moughoof",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                return;
+            }
+
+            try
+            {
+                List<WordEntry> loaded =
+                    ReadDictionaryFile(path);
+
+                if (loaded.Count == 0)
+                {
+                    MessageBox.Show(
+                        "PS.txt contains no valid dictionary entries.",
+                        "Moughoof",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+
+                    return;
+                }
+
+                dictionary.Clear();
+                dictionary.AddRange(loaded);
+
+                referenceLoaded = true;
+                activeReferenceName = "PS.txt";
+
+                UpdateReferenceLabel();
+                UpdateRefreshReferenceLabel();
+
+                ClearSearchResults();
+                UpdatePronunciationPreview();
+
+                statusLabel.Text = "";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Could not refresh PS.txt.\r\n\r\n" + ex.Message,
+                    "Moughoof",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             }
         }
 
@@ -683,19 +903,34 @@ namespace Moughoof
                 " words";
         }
 
-        private void UpdateExportButton()
+        private void UpdateRefreshReferenceLabel()
         {
-            exportButton.Enabled =
-                referenceLoaded && dictionary.Count > 0;
+            bool isDefaultReference =
+                referenceLoaded &&
+                string.Equals(
+                    activeReferenceName,
+                    "PS.txt",
+                    StringComparison.OrdinalIgnoreCase);
+
+            refreshReferenceLabel.Enabled =
+                referenceLoaded && !isDefaultReference;
+
+            refreshReferenceLabel.ForeColor =
+                refreshReferenceLabel.Enabled
+                    ? Color.LightSkyBlue
+                    : Color.FromArgb(100, 100, 100);
+
+            refreshReferenceLabel.Cursor =
+                refreshReferenceLabel.Enabled
+                    ? Cursors.Hand
+                    : Cursors.Default;
         }
 
-        // ================================================
-        // INPUT AND PRONUNCIATION PREVIEW
-        // ================================================
+        // =========================================================
+        // INPUT
+        // =========================================================
 
-        private void InputBox_Enter(
-            object sender,
-            EventArgs e)
+        private void InputBox_Enter(object sender, EventArgs e)
         {
             if (inputBox.Text == "Input word")
             {
@@ -704,9 +939,7 @@ namespace Moughoof
             }
         }
 
-        private void InputBox_TextChanged(
-            object sender,
-            EventArgs e)
+        private void InputBox_TextChanged(object sender, EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -724,18 +957,17 @@ namespace Moughoof
             return word;
         }
 
-        // ================================================
-        // NORMALIZATION AND LOOKUP
-        // ================================================
+        // =========================================================
+        // WORD LOOKUP
+        // =========================================================
 
         private string NormalizePersianLookup(string value)
         {
             if (value == null)
                 return "";
 
-            // Persian ZWNJ and ordinary spaces are equivalent
-            // during lookup. Stored words remain unchanged.
-
+            // ZWNJ and ordinary spaces are equivalent for Persian
+            // lookup only. The original stored text is preserved.
             return value
                 .Replace('\u200C', ' ')
                 .Trim();
@@ -743,9 +975,6 @@ namespace Moughoof
 
         private WordEntry FindExactPersianWord(string word)
         {
-            if (string.IsNullOrWhiteSpace(word))
-                return null;
-
             string normalizedWord =
                 NormalizePersianLookup(word);
 
@@ -756,36 +985,27 @@ namespace Moughoof
                     StringComparison.Ordinal));
         }
 
-        private WordEntry FindByPronunciation(string input)
+        private WordEntry FindByPronunciation(string word)
         {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
-
-            // Match the user's English input against the stored
-            // pronunciation without case sensitivity.
-            // The stored pronunciation itself is never modified.
-
+            // English pronunciation lookup is intentionally
+            // case-sensitive. "rAneS" and "ranes" differ.
             return dictionary.FirstOrDefault(
                 item => string.Equals(
-                    item.Pronunciation.Trim(),
-                    input.Trim(),
-                    StringComparison.OrdinalIgnoreCase));
+                    item.Pronunciation,
+                    word,
+                    StringComparison.Ordinal));
         }
 
-        private WordEntry FindSourceWord(string input)
+        private WordEntry FindSourceWord(string word)
         {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
+            // Persian exact match takes priority.
+            WordEntry source = FindExactPersianWord(word);
 
-            // Prefer an exact Persian word if one exists.
-            WordEntry persianEntry =
-                FindExactPersianWord(input);
+            if (source != null)
+                return source;
 
-            if (persianEntry != null)
-                return persianEntry;
-
-            // Otherwise, interpret the input as pronunciation.
-            return FindByPronunciation(input);
+            // Otherwise try an exact, case-sensitive pronunciation.
+            return FindByPronunciation(word);
         }
 
         private void UpdatePronunciationPreview()
@@ -806,13 +1026,11 @@ namespace Moughoof
                     : entry.Pronunciation;
         }
 
-        // ================================================
-        // KEYBOARD HANDLING
-        // ================================================
+        // =========================================================
+        // KEYBOARD
+        // =========================================================
 
-        private void MainForm_KeyDown(
-            object sender,
-            KeyEventArgs e)
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
@@ -835,29 +1053,22 @@ namespace Moughoof
             }
         }
 
-        // ================================================
+        // =========================================================
         // SEARCH
-        // ================================================
+        // =========================================================
 
-        private void SearchButton_Click(
-            object sender,
-            EventArgs e)
+        private void SearchButton_Click(object sender, EventArgs e)
         {
             PerformSearch();
         }
 
         private void PerformSearch()
         {
-            if (!referenceLoaded || dictionary.Count == 0)
+            if (!referenceLoaded)
             {
-                lastSearchWord = "";
-                lastSearchEntry = null;
-
                 ClearSearchResults();
-
-                pronunciationLabel.Text = "";
                 statusLabel.Text = "";
-
+                pronunciationLabel.Text = "";
                 return;
             }
 
@@ -865,17 +1076,11 @@ namespace Moughoof
 
             if (string.IsNullOrWhiteSpace(word))
             {
-                lastSearchWord = "";
-                lastSearchEntry = null;
-
                 ClearSearchResults();
                 pronunciationLabel.Text = "";
-
+                statusLabel.Text = "";
                 return;
             }
-
-            // Input can be either a Persian word or its English
-            // pronunciation, for example "سلام" or "salAm".
 
             WordEntry source = FindSourceWord(word);
 
@@ -900,6 +1105,13 @@ namespace Moughoof
 
             string pronunciation = source.Pronunciation;
 
+            if (string.IsNullOrEmpty(pronunciation))
+            {
+                currentResults.Clear();
+                RefreshResults();
+                return;
+            }
+
             int count = (int)matchCountBox.Value;
 
             if (count > pronunciation.Length)
@@ -917,10 +1129,6 @@ namespace Moughoof
                     pronunciation.Length - count,
                     count);
             }
-
-            // Keep the searched source word out of the visible list.
-            // Search matching against other entries remains
-            // case-sensitive, as in the original behavior.
 
             currentResults = dictionary
                 .Where(item =>
@@ -951,18 +1159,17 @@ namespace Moughoof
         {
             lastSearchWord = "";
             lastSearchEntry = null;
+
             currentResults.Clear();
 
             RefreshResults();
         }
 
-        // ================================================
+        // =========================================================
         // MATCH OPTIONS
-        // ================================================
+        // =========================================================
 
-        private void MatchOption_Changed(
-            object sender,
-            EventArgs e)
+        private void MatchOption_Changed(object sender, EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -982,13 +1189,11 @@ namespace Moughoof
                 PerformSearch();
         }
 
-        // ================================================
+        // =========================================================
         // SORTING
-        // ================================================
+        // =========================================================
 
-        private void SortOption_Changed(
-            object sender,
-            EventArgs e)
+        private void SortOption_Changed(object sender, EventArgs e)
         {
             if (isUpdating)
                 return;
@@ -999,7 +1204,15 @@ namespace Moughoof
 
         private void SortCurrentResults()
         {
-            if (lengthRadio.Checked)
+            if (alphabetRadio.Checked)
+            {
+                currentResults = currentResults
+                    .OrderBy(
+                        item => item.Persian,
+                        StringComparer.CurrentCulture)
+                    .ToList();
+            }
+            else if (lengthRadio.Checked)
             {
                 currentResults = currentResults
                     .OrderBy(item => item.Persian.Length)
@@ -1008,19 +1221,11 @@ namespace Moughoof
                         StringComparer.CurrentCulture)
                     .ToList();
             }
-            else if (alphabetRadio.Checked)
-            {
-                currentResults = currentResults
-                    .OrderBy(
-                        item => item.Persian,
-                        StringComparer.CurrentCulture)
-                    .ToList();
-            }
         }
 
-        // ================================================
-        // REFRESH RESULTS
-        // ================================================
+        // =========================================================
+        // RESULTS
+        // =========================================================
 
         private void RefreshResults()
         {
@@ -1038,8 +1243,7 @@ namespace Moughoof
                 }
 
                 statusLabel.Text =
-                    currentResults.Count.ToString() +
-                    " Results";
+                    currentResults.Count.ToString() + " Results";
             }
             finally
             {
@@ -1050,9 +1254,9 @@ namespace Moughoof
             resultsListBox.Invalidate();
         }
 
-        // ================================================
+        // =========================================================
         // COPY SELECTED PERSIAN WORD
-        // ================================================
+        // =========================================================
 
         private void ResultsListBox_MouseDown(
             object sender,
@@ -1075,9 +1279,7 @@ namespace Moughoof
             }
         }
 
-        private void CopyMenuItem_Click(
-            object sender,
-            EventArgs e)
+        private void CopyMenuItem_Click(object sender, EventArgs e)
         {
             CopySelectedPersian();
         }
@@ -1105,15 +1307,13 @@ namespace Moughoof
             }
         }
 
-        // ================================================
-        // EXPORT CURRENT SEARCH
-        // ================================================
+        // =========================================================
+        // EXPORT SEARCHED WORD + VISIBLE RESULTS
+        // =========================================================
 
-        private void ExportButton_Click(
-            object sender,
-            EventArgs e)
+        private void ExportButton_Click(object sender, EventArgs e)
         {
-            if (!referenceLoaded || dictionary.Count == 0)
+            if (!referenceLoaded)
             {
                 MessageBox.Show(
                     "No reference is loaded.",
@@ -1135,16 +1335,15 @@ namespace Moughoof
                 return;
             }
 
-            // The exported file contains:
-            // 1. The searched source word.
-            // 2. Every current ListBox result, in displayed order.
-            //
-            // The source word is exported but is not displayed
-            // as a result in the ListBox.
+            string safeWord =
+                MakeSafeFileName(lastSearchEntry.Persian);
+
+            string suggestedName =
+                "پساوند " + safeWord + ".txt";
 
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
-                dialog.Title = "Export Current Search";
+                dialog.Title = "Export Search Results";
 
                 dialog.Filter =
                     "Text files (*.txt)|*.txt|All files (*.*)|*.*";
@@ -1152,11 +1351,7 @@ namespace Moughoof
                 dialog.DefaultExt = "txt";
                 dialog.AddExtension = true;
                 dialog.OverwritePrompt = true;
-
-                string safeWord =
-                    MakeSafeFileName(lastSearchEntry.Persian);
-
-                dialog.FileName = "پساوند " + safeWord + ".txt";
+                dialog.FileName = suggestedName;
 
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                     return;
@@ -1168,16 +1363,12 @@ namespace Moughoof
                         false,
                         new UTF8Encoding(false)))
                     {
-                        // Write the searched word first.
-
+                        // Write the searched source word first.
                         writer.Write(lastSearchEntry.Persian);
                         writer.Write('\t');
-                        writer.WriteLine(
-                            lastSearchEntry.Pronunciation);
+                        writer.WriteLine(lastSearchEntry.Pronunciation);
 
-                        // Then write the current results in their
-                        // visible ListBox order.
-
+                        // Then write results in their current visible order.
                         foreach (object row in resultsListBox.Items)
                         {
                             WordEntry item = row as WordEntry;
@@ -1191,17 +1382,14 @@ namespace Moughoof
                         }
                     }
 
-                    int exportedCount =
-                        resultsListBox.Items.Count + 1;
-
                     statusLabel.Text =
-                        exportedCount.ToString() +
+                        (resultsListBox.Items.Count + 1).ToString() +
                         " Words Exported";
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(
-                        "Could not export the results.\r\n\r\n" +
+                        "Could not export the search results.\r\n\r\n" +
                         ex.Message,
                         "Moughoof",
                         MessageBoxButtons.OK,
@@ -1212,21 +1400,18 @@ namespace Moughoof
 
         private string MakeSafeFileName(string value)
         {
-            if (string.IsNullOrWhiteSpace(value))
-                return "Word";
-
-            foreach (char invalidChar in
-                Path.GetInvalidFileNameChars())
+            foreach (char invalid in Path.GetInvalidFileNameChars())
             {
-                value = value.Replace(invalidChar, '_');
+                value = value.Replace(invalid, '_');
             }
 
             return value.Trim();
         }
 
-        // ================================================
+        // =========================================================
         // OWNER-DRAW RESULTS
-        // ================================================
+        // Persian word on the right, pronunciation on the left
+        // =========================================================
 
         private void ResultsListBox_DrawItem(
             object sender,
@@ -1248,70 +1433,82 @@ namespace Moughoof
                 (e.State & DrawItemState.Selected) ==
                 DrawItemState.Selected;
 
-            Color backgroundColor = selected
+            Color background = selected
                 ? selectedColor
                 : (e.Index % 2 == 0
                     ? rowColor1
                     : rowColor2);
 
-            using (SolidBrush brush =
-                new SolidBrush(backgroundColor))
+            using (SolidBrush backgroundBrush =
+                new SolidBrush(background))
             {
                 e.Graphics.FillRectangle(
-                    brush,
+                    backgroundBrush,
                     e.Bounds);
             }
 
-            int persianWidth =
-                (int)(e.Bounds.Width * 0.6);
+            Rectangle bounds = e.Bounds;
+
+            int leftWidth = (int)(bounds.Width * 0.40);
+            int rightWidth = bounds.Width - leftWidth;
+
+            Rectangle pronunciationBounds = new Rectangle(
+                bounds.Left + 8,
+                bounds.Top,
+                leftWidth - 12,
+                bounds.Height);
 
             Rectangle persianBounds = new Rectangle(
-                e.Bounds.Left + 4,
-                e.Bounds.Top,
-                persianWidth - 8,
-                e.Bounds.Height);
+                bounds.Left + leftWidth,
+                bounds.Top,
+                rightWidth - 8,
+                bounds.Height);
 
-            Rectangle latinBounds = new Rectangle(
-                e.Bounds.Left + persianWidth,
-                e.Bounds.Top,
-                e.Bounds.Width - persianWidth - 6,
-                e.Bounds.Height);
+            TextRenderer.DrawText(
+                e.Graphics,
+                item.Pronunciation,
+                pronunciationFont,
+                pronunciationBounds,
+                selected ? Color.White : Color.LightGray,
+                TextFormatFlags.Left |
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis |
+                TextFormatFlags.NoPrefix);
 
-            using (Font persianFont = new Font(
-                "Segoe UI",
-                11f,
-                FontStyle.Regular))
-            {
-                TextRenderer.DrawText(
-                    e.Graphics,
-                    item.Persian,
-                    persianFont,
-                    persianBounds,
-                    Color.White,
-                    TextFormatFlags.Right |
-                    TextFormatFlags.VerticalCenter |
-                    TextFormatFlags.NoPrefix |
-                    TextFormatFlags.SingleLine);
-            }
-
-            using (Font latinFont = new Font(
-                "Segoe UI",
-                9.5f,
-                FontStyle.Regular))
-            {
-                TextRenderer.DrawText(
-                    e.Graphics,
-                    item.Pronunciation,
-                    latinFont,
-                    latinBounds,
-                    Color.White,
-                    TextFormatFlags.Left |
-                    TextFormatFlags.VerticalCenter |
-                    TextFormatFlags.NoPrefix |
-                    TextFormatFlags.SingleLine);
-            }
+            TextRenderer.DrawText(
+                e.Graphics,
+                item.Persian,
+                preferredWordFont,
+                persianBounds,
+                Color.White,
+                TextFormatFlags.Right |
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis |
+                TextFormatFlags.NoPrefix |
+                TextFormatFlags.RightToLeft);
 
             e.DrawFocusRectangle();
+        }
+
+        // =========================================================
+        // CLEANUP
+        // =========================================================
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            if (preferredWordFont != null)
+                preferredWordFont.Dispose();
+
+            if (preferredInputFont != null)
+                preferredInputFont.Dispose();
+
+            if (pronunciationFont != null)
+                pronunciationFont.Dispose();
+
+            if (fallbackFont != null)
+                fallbackFont.Dispose();
+
+            base.OnFormClosed(e);
         }
     }
 }
