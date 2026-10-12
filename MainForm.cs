@@ -1,10 +1,10 @@
 
-/* ======================== MOUGHOOf V1.5 ========================
-   Updates:
-   - Case-sensitive English pronunciation lookup
-   - Refresh Reference label for reloading PS.txt
-   - Font priority: Vazirmatn > B Nazanin > system default
-   - Preserve existing search, sorting, copy, import and export behavior
+/* ======================== MOUGHOOf V1.6 ========================
+   Layout-only updates:
+   - Center both result columns; pronunciation left, Persian right
+   - Reference labels fit their text
+   - Default form height reduced to 650
+   All existing functionality preserved.
    =============================================================== */
 
 using System;
@@ -122,7 +122,9 @@ namespace Moughoof
         {
             Text = "Moughoof";
 
-            ClientSize = new Size(460, 670);
+            // Changed from 460 x 670 to 460 x 650.
+            ClientSize = new Size(460, 650);
+
             MinimumSize = new Size(460, 550);
             MaximumSize = new Size(460, 2000);
 
@@ -141,7 +143,7 @@ namespace Moughoof
 
         // =========================================================
         // FONT SELECTION
-        // Priority: Vazirmatn > B Nazanin > System default
+        // Priority: Vazirmatn > B Nazanin > system default
         // =========================================================
 
         private void InitializeFonts()
@@ -186,7 +188,7 @@ namespace Moughoof
             }
             catch
             {
-                // Keep the system's default font if font detection fails.
+                // Keep the system's default font if detection fails.
             }
 
             fallbackFont = new Font(Font.FontFamily, 9f);
@@ -225,12 +227,18 @@ namespace Moughoof
                         return new Font(family, size, style);
                     }
 
-                    return new Font(family, size, FontStyle.Regular);
+                    return new Font(
+                        family,
+                        size,
+                        FontStyle.Regular);
                 }
             }
             catch
             {
-                return new Font(fallback.FontFamily, size, style);
+                return new Font(
+                    fallback.FontFamily,
+                    size,
+                    style);
             }
         }
 
@@ -491,17 +499,18 @@ namespace Moughoof
             outputPanel.Controls.Add(resultsListBox);
 
             // DATABASE REFERENCE LABEL
+            // AutoSize makes the label width fit its text.
 
             referenceLabel = new Label
             {
                 Location = new Point(10, 601),
-                Size = new Size(350, 22),
+
+                AutoSize = true,
 
                 Anchor =
                     AnchorStyles.Bottom |
                     AnchorStyles.Left,
 
-                AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
 
                 Text = "Reference Not Found",
@@ -519,28 +528,27 @@ namespace Moughoof
             Controls.Add(referenceLabel);
 
             // REFRESH REFERENCE LABEL
+            // AutoSize makes this label width fit its text too.
 
             refreshReferenceLabel = new Label
             {
                 Location = new Point(10, 625),
-                Size = new Size(350, 22),
+
+                AutoSize = true,
 
                 Anchor =
                     AnchorStyles.Bottom |
                     AnchorStyles.Left,
 
-                AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
 
                 Text = "Refresh Reference",
 
-                ForeColor = Color.LightSkyBlue,
+                ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent,
 
-                Cursor = Cursors.Hand,
+                Cursor = Cursors.Default,
 
-                // Disabled initially. Enabled after loading
-                // a custom reference instead of PS.txt.
                 Enabled = false
             };
 
@@ -966,8 +974,6 @@ namespace Moughoof
             if (value == null)
                 return "";
 
-            // ZWNJ and ordinary spaces are equivalent for Persian
-            // lookup only. The original stored text is preserved.
             return value
                 .Replace('\u200C', ' ')
                 .Trim();
@@ -987,8 +993,7 @@ namespace Moughoof
 
         private WordEntry FindByPronunciation(string word)
         {
-            // English pronunciation lookup is intentionally
-            // case-sensitive. "rAneS" and "ranes" differ.
+            // Case-sensitive pronunciation lookup.
             return dictionary.FirstOrDefault(
                 item => string.Equals(
                     item.Pronunciation,
@@ -998,13 +1003,11 @@ namespace Moughoof
 
         private WordEntry FindSourceWord(string word)
         {
-            // Persian exact match takes priority.
             WordEntry source = FindExactPersianWord(word);
 
             if (source != null)
                 return source;
 
-            // Otherwise try an exact, case-sensitive pronunciation.
             return FindByPronunciation(word);
         }
 
@@ -1363,12 +1366,12 @@ namespace Moughoof
                         false,
                         new UTF8Encoding(false)))
                     {
-                        // Write the searched source word first.
+                        // Searched source word first.
                         writer.Write(lastSearchEntry.Persian);
                         writer.Write('\t');
                         writer.WriteLine(lastSearchEntry.Pronunciation);
 
-                        // Then write results in their current visible order.
+                        // Export currently visible results in order.
                         foreach (object row in resultsListBox.Items)
                         {
                             WordEntry item = row as WordEntry;
@@ -1410,7 +1413,8 @@ namespace Moughoof
 
         // =========================================================
         // OWNER-DRAW RESULTS
-        // Persian word on the right, pronunciation on the left
+        // Pronunciation: left column, centered
+        // Persian: right column, centered
         // =========================================================
 
         private void ResultsListBox_DrawItem(
@@ -1449,39 +1453,43 @@ namespace Moughoof
 
             Rectangle bounds = e.Bounds;
 
+            // Keep two columns with the same proportions:
+            // pronunciation on the left, Persian on the right.
             int leftWidth = (int)(bounds.Width * 0.40);
             int rightWidth = bounds.Width - leftWidth;
 
             Rectangle pronunciationBounds = new Rectangle(
-                bounds.Left + 8,
+                bounds.Left + 4,
                 bounds.Top,
-                leftWidth - 12,
+                leftWidth - 8,
                 bounds.Height);
 
             Rectangle persianBounds = new Rectangle(
-                bounds.Left + leftWidth,
+                bounds.Left + leftWidth + 4,
                 bounds.Top,
                 rightWidth - 8,
                 bounds.Height);
 
+            // Center pronunciation horizontally in column 1.
             TextRenderer.DrawText(
                 e.Graphics,
                 item.Pronunciation,
                 pronunciationFont,
                 pronunciationBounds,
                 selected ? Color.White : Color.LightGray,
-                TextFormatFlags.Left |
+                TextFormatFlags.HorizontalCenter |
                 TextFormatFlags.VerticalCenter |
                 TextFormatFlags.EndEllipsis |
                 TextFormatFlags.NoPrefix);
 
+            // Center Persian horizontally in column 2.
             TextRenderer.DrawText(
                 e.Graphics,
                 item.Persian,
                 preferredWordFont,
                 persianBounds,
                 Color.White,
-                TextFormatFlags.Right |
+                TextFormatFlags.HorizontalCenter |
                 TextFormatFlags.VerticalCenter |
                 TextFormatFlags.EndEllipsis |
                 TextFormatFlags.NoPrefix |
