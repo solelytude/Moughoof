@@ -1,5 +1,5 @@
 
-/* ======================== MOUGHOOf V1.6 ========================
+/* ======================== MOUGHOOf V1.7 ========================
    Layout-only updates:
    - Center both result columns; pronunciation left, Persian right
    - Reference labels fit their text
@@ -27,6 +27,9 @@ namespace Moughoof
 
         private TextBox inputBox;
         private Label pronunciationLabel;
+        private CheckBox geminationCheckBox;
+        private CheckBox irrelevantCheckBox;
+        private ToolTip inputWarningToolTip;
 
         private Label matchLabel;
         private RadioButton firstRadio;
@@ -279,7 +282,7 @@ namespace Moughoof
             pronunciationLabel = new Label
             {
                 Location = new Point(0, 32),
-                Size = new Size(443, 20),
+                Size = new Size(255, 20),
 
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -291,6 +294,47 @@ namespace Moughoof
             };
 
             inputPanel.Controls.Add(pronunciationLabel);
+
+            // SEARCH BEHAVIOR OPTIONS — unchecked by default.
+            geminationCheckBox = new CheckBox
+            {
+                Location = new Point(263, 32),
+                Size = new Size(91, 20),
+                Text = "Gemination",
+                AutoSize = false,
+                Checked = false,
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 8.5f),
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseVisualStyleBackColor = false
+            };
+
+            inputPanel.Controls.Add(geminationCheckBox);
+
+            irrelevantCheckBox = new CheckBox
+            {
+                Location = new Point(354, 32),
+                Size = new Size(89, 20),
+                Text = "Irrelevant",
+                AutoSize = false,
+                Checked = false,
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 8.5f),
+                TextAlign = ContentAlignment.MiddleLeft,
+                UseVisualStyleBackColor = false
+            };
+
+            inputPanel.Controls.Add(irrelevantCheckBox);
+
+            inputWarningToolTip = new ToolTip
+            {
+                ShowAlways = true,
+                InitialDelay = 0,
+                ReshowDelay = 0,
+                AutoPopDelay = 4000
+            };
 
             // MATCH OPTIONS
 
@@ -603,6 +647,11 @@ namespace Moughoof
             inputBox.TextChanged += InputBox_TextChanged;
 
             searchButton.Click += SearchButton_Click;
+
+            geminationCheckBox.CheckedChanged += SearchBehaviorOption_Changed;
+            irrelevantCheckBox.CheckedChanged += SearchBehaviorOption_Changed;
+
+            resultsListBox.MouseDoubleClick += ResultsListBox_MouseDoubleClick;
 
             firstRadio.CheckedChanged += MatchOption_Changed;
             lastRadio.CheckedChanged += MatchOption_Changed;
@@ -1016,17 +1065,33 @@ namespace Moughoof
             if (!referenceLoaded)
             {
                 pronunciationLabel.Text = "";
+                pronunciationLabel.ForeColor = Color.LightGray;
                 return;
             }
 
             string word = GetInputWord();
 
+            if (string.IsNullOrWhiteSpace(word))
+            {
+                pronunciationLabel.Text = "";
+                pronunciationLabel.ForeColor = Color.LightGray;
+                return;
+            }
+
             WordEntry entry = FindSourceWord(word);
 
-            pronunciationLabel.Text =
-                entry == null
-                    ? ""
-                    : entry.Pronunciation;
+            if (entry != null)
+            {
+                pronunciationLabel.Text = entry.Pronunciation;
+                pronunciationLabel.ForeColor = Color.LightGray;
+            }
+            else
+            {
+                // Unknown words are shown in red. In Irrelevant mode,
+                // this also previews a directly entered Latin pattern.
+                pronunciationLabel.Text = word;
+                pronunciationLabel.ForeColor = Color.Red;
+            }
         }
 
         // =========================================================
@@ -1072,6 +1137,7 @@ namespace Moughoof
                 ClearSearchResults();
                 statusLabel.Text = "";
                 pronunciationLabel.Text = "";
+                pronunciationLabel.ForeColor = Color.LightGray;
                 return;
             }
 
@@ -1081,13 +1147,38 @@ namespace Moughoof
             {
                 ClearSearchResults();
                 pronunciationLabel.Text = "";
+                pronunciationLabel.ForeColor = Color.LightGray;
                 statusLabel.Text = "";
+                return;
+            }
+
+            // Irrelevant mode accepts Latin input only.
+            if (irrelevantCheckBox.Checked &&
+                (!ContainsLatinLetter(word) || ContainsPersianCharacters(word)))
+            {
+                ClearSearchResults();
+                statusLabel.Text = "";
+                pronunciationLabel.Text = word;
+                pronunciationLabel.ForeColor = Color.Red;
+
+                inputWarningToolTip.Show(
+                    "Irrelevant mode only supports Latin input",
+                    inputBox,
+                    Math.Max(0, inputBox.Width - 285),
+                    inputBox.Height,
+                    4000);
+
                 return;
             }
 
             WordEntry source = FindSourceWord(word);
 
-            if (source == null)
+            // In Irrelevant mode, an unknown Latin input itself becomes
+            // the search pronunciation rather than requiring a DB entry.
+            bool directLatinSearch =
+                source == null && irrelevantCheckBox.Checked;
+
+            if (source == null && !directLatinSearch)
             {
                 lastSearchWord = word;
                 lastSearchEntry = null;
@@ -1095,7 +1186,8 @@ namespace Moughoof
                 currentResults.Clear();
                 RefreshResults();
 
-                pronunciationLabel.Text = "";
+                pronunciationLabel.Text = word;
+                pronunciationLabel.ForeColor = Color.Red;
                 statusLabel.Text = "Word not found";
 
                 return;
@@ -1104,9 +1196,12 @@ namespace Moughoof
             lastSearchWord = word;
             lastSearchEntry = source;
 
-            pronunciationLabel.Text = source.Pronunciation;
+            string pronunciation =
+                source != null ? source.Pronunciation : word;
 
-            string pronunciation = source.Pronunciation;
+            pronunciationLabel.Text = pronunciation;
+            pronunciationLabel.ForeColor =
+                source != null ? Color.LightGray : Color.Red;
 
             if (string.IsNullOrEmpty(pronunciation))
             {
@@ -1115,40 +1210,52 @@ namespace Moughoof
                 return;
             }
 
+            // When Gemination is unchecked, repeated consecutive Latin
+            // letters are collapsed before extracting and matching the pattern.
+            string matchingPronunciation = geminationCheckBox.Checked
+                ? pronunciation
+                : RemoveGemination(pronunciation);
+
             int count = (int)matchCountBox.Value;
 
-            if (count > pronunciation.Length)
-                count = pronunciation.Length;
+            if (count > matchingPronunciation.Length)
+                count = matchingPronunciation.Length;
 
             string pattern;
 
             if (firstRadio.Checked)
             {
-                pattern = pronunciation.Substring(0, count);
+                pattern = matchingPronunciation.Substring(0, count);
             }
             else
             {
-                pattern = pronunciation.Substring(
-                    pronunciation.Length - count,
+                pattern = matchingPronunciation.Substring(
+                    matchingPronunciation.Length - count,
                     count);
             }
 
             currentResults = dictionary
                 .Where(item =>
+                    source == null ||
                     !string.Equals(
                         NormalizePersianLookup(item.Persian),
                         NormalizePersianLookup(source.Persian),
                         StringComparison.Ordinal))
                 .Where(item =>
                 {
+                    string candidatePronunciation =
+                        geminationCheckBox.Checked
+                            ? item.Pronunciation
+                            : RemoveGemination(item.Pronunciation);
+
                     if (firstRadio.Checked)
                     {
-                        return item.Pronunciation.StartsWith(
+                        return candidatePronunciation.StartsWith(
                             pattern,
                             StringComparison.Ordinal);
                     }
 
-                    return item.Pronunciation.EndsWith(
+                    return candidatePronunciation.EndsWith(
                         pattern,
                         StringComparison.Ordinal);
                 })
@@ -1156,6 +1263,65 @@ namespace Moughoof
 
             SortCurrentResults();
             RefreshResults();
+        }
+
+        private bool ContainsLatinLetter(string value)
+        {
+            return value != null &&
+                value.Any(c =>
+                    (c >= 'A' && c <= 'Z') ||
+                    (c >= 'a' && c <= 'z'));
+        }
+
+        private bool ContainsPersianCharacters(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return false;
+
+            return value.Any(c =>
+                (c >= '\\u0600' && c <= '\\u06FF') ||
+                (c >= '\\u0750' && c <= '\\u077F') ||
+                (c >= '\\u08A0' && c <= '\\u08FF') ||
+                (c >= '\\uFB50' && c <= '\\uFDFF') ||
+                (c >= '\\uFE70' && c <= '\\uFEFF'));
+        }
+
+        private string RemoveGemination(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length < 2)
+                return value ?? "";
+
+            StringBuilder result = new StringBuilder(value.Length);
+            char previous = value[0];
+            result.Append(previous);
+
+            for (int i = 1; i < value.Length; i++)
+            {
+                char current = value[i];
+
+                bool isRepeatedLatinLetter =
+                    current == previous &&
+                    ((current >= 'A' && current <= 'Z') ||
+                     (current >= 'a' && current <= 'z'));
+
+                if (!isRepeatedLatinLetter)
+                    result.Append(current);
+
+                previous = current;
+            }
+
+            return result.ToString();
+        }
+
+        private void SearchBehaviorOption_Changed(object sender, EventArgs e)
+        {
+            if (isUpdating)
+                return;
+
+            if (!string.IsNullOrEmpty(lastSearchWord))
+                PerformSearch();
+            else
+                UpdatePronunciationPreview();
         }
 
         private void ClearSearchResults()
@@ -1282,6 +1448,31 @@ namespace Moughoof
             }
         }
 
+        private void ResultsListBox_MouseDoubleClick(
+            object sender,
+            MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left)
+                return;
+
+            int index = resultsListBox.IndexFromPoint(e.Location);
+
+            if (index < 0 || index >= resultsListBox.Items.Count)
+                return;
+
+            WordEntry selected =
+                resultsListBox.Items[index] as WordEntry;
+
+            if (selected == null)
+                return;
+
+            inputBox.Text = selected.Persian;
+            inputBox.ForeColor = Color.White;
+            inputBox.Focus();
+            inputBox.SelectionStart = inputBox.TextLength;
+            inputBox.SelectionLength = 0;
+        }
+
         private void CopyMenuItem_Click(object sender, EventArgs e)
         {
             CopySelectedPersian();
@@ -1341,8 +1532,12 @@ namespace Moughoof
             string safeWord =
                 MakeSafeFileName(lastSearchEntry.Persian);
 
+            string filePrefix = firstRadio.Checked
+                ? "پیشاوند "
+                : "پساوند ";
+
             string suggestedName =
-                "پساوند " + safeWord + ".txt";
+                filePrefix + safeWord + ".txt";
 
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
@@ -1525,6 +1720,9 @@ private void ResultsListBox_DrawItem(
 
             if (fallbackFont != null)
                 fallbackFont.Dispose();
+
+            if (inputWarningToolTip != null)
+                inputWarningToolTip.Dispose();
 
             base.OnFormClosed(e);
         }
