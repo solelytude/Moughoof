@@ -1,6 +1,7 @@
 
-/* ======================== MOUGHOOf V1.7 ========================
+/* ======================== MOUGHOOf V1.7.2 ======================
    Layout-only updates:
+   - Correct client-area sizing to preserve the right-side inner margin
    - Center both result columns; pronunciation left, Persian right
    - Reference labels fit their text
    - Default form height reduced to 650
@@ -125,16 +126,17 @@ namespace Moughoof
         {
             Text = "Moughoof";
 
-            // Changed from 460 x 670 to 460 x 650.
-            ClientSize = new Size(460, 650);
+            // Keep the intended client area independent of the window-frame size.
+            // MinimumSize and MaximumSize describe the outer form size, so convert
+            // the desired client dimensions to outer dimensions to avoid clipping.
+            FormBorderStyle = FormBorderStyle.Sizable;
 
-            MinimumSize = new Size(460, 550);
-            MaximumSize = new Size(460, 2000);
+            ClientSize = new Size(460, 650);
+            MinimumSize = SizeFromClientSize(new Size(460, 550));
+            MaximumSize = SizeFromClientSize(new Size(460, 2000));
 
             MinimizeBox = true;
             MaximizeBox = false;
-
-            FormBorderStyle = FormBorderStyle.Sizable;
 
             BackColor = backgroundColor;
             ForeColor = Color.White;
