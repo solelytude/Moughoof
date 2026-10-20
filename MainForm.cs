@@ -1279,11 +1279,11 @@ namespace Moughoof
                 return false;
 
             return value.Any(c =>
-                (c >= '\\u0600' && c <= '\\u06FF') ||
-                (c >= '\\u0750' && c <= '\\u077F') ||
-                (c >= '\\u08A0' && c <= '\\u08FF') ||
-                (c >= '\\uFB50' && c <= '\\uFDFF') ||
-                (c >= '\\uFE70' && c <= '\\uFEFF'));
+                (c >= '\u0600' && c <= '\u06FF') ||
+                (c >= '\u0750' && c <= '\u077F') ||
+                (c >= '\u08A0' && c <= '\u08FF') ||
+                (c >= '\uFB50' && c <= '\uFDFF') ||
+                (c >= '\uFE70' && c <= '\uFEFF'));
         }
 
         private string RemoveGemination(string value)
