@@ -1152,8 +1152,15 @@ namespace Moughoof
                 return;
             }
 
-            // Irrelevant mode accepts Latin input only.
-            if (irrelevantCheckBox.Checked &&
+            // First check the dictionary so Irrelevant mode remains additive:
+            // known Persian words and known Latin-transliterated words still
+            // use the normal dictionary search.
+            WordEntry source = FindSourceWord(word);
+
+            // Irrelevant mode accepts direct Latin input only when the word
+            // is not already found in the dictionary. Known dictionary entries
+            // always retain the normal search behavior.
+            if (irrelevantCheckBox.Checked && source == null &&
                 (!ContainsLatinLetter(word) || ContainsPersianCharacters(word)))
             {
                 ClearSearchResults();
@@ -1170,8 +1177,6 @@ namespace Moughoof
 
                 return;
             }
-
-            WordEntry source = FindSourceWord(word);
 
             // In Irrelevant mode, an unknown Latin input itself becomes
             // the search pronunciation rather than requiring a DB entry.
