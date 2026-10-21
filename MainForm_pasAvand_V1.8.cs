@@ -124,7 +124,41 @@ namespace Moughoof
 
         private void InitializeForm()
         {
-            Text = "Moughoof";
+            Text = "pasAvand";
+
+            // Load the application's icon from the embedded icon resource.
+            // This explicitly supplies the same icon to the title bar and taskbar.
+            ShowIcon = true;
+            ShowInTaskbar = true;
+
+            try
+            {
+                using (Stream iconStream = typeof(MainForm).Assembly
+                    .GetManifestResourceStream("Moughoof.AppIcon.ico"))
+                {
+                    if (iconStream != null)
+                    {
+                        Icon = new System.Drawing.Icon(iconStream);
+                    }
+                    else
+                    {
+                        Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath)
+                            ?? SystemIcons.Application;
+                    }
+                }
+            }
+            catch
+            {
+                try
+                {
+                    Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath)
+                        ?? SystemIcons.Application;
+                }
+                catch
+                {
+                    Icon = SystemIcons.Application;
+                }
+            }
 
             // Keep the intended client area independent of the window-frame size.
             // MinimumSize and MaximumSize describe the outer form size, so convert
@@ -726,7 +760,7 @@ namespace Moughoof
                 dictionary.AddRange(loaded);
 
                 referenceLoaded = true;
-                activeReferenceName = "DefaultDB.txt";
+                activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
                 UpdateRefreshReferenceLabel();
@@ -910,7 +944,7 @@ namespace Moughoof
                 dictionary.AddRange(loaded);
 
                 referenceLoaded = true;
-                activeReferenceName = "DefaultDB.txt";
+                activeReferenceName = "Default";
 
                 UpdateReferenceLabel();
                 UpdateRefreshReferenceLabel();
@@ -950,7 +984,7 @@ namespace Moughoof
                 referenceLoaded &&
                 string.Equals(
                     activeReferenceName,
-                    "DefaultDB.txt",
+                    "Default",
                     StringComparison.OrdinalIgnoreCase);
 
             refreshReferenceLabel.Enabled =
