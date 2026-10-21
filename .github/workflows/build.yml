@@ -1,4 +1,4 @@
-name: Build Moughoof
+name: Build pasAvand
 
 on:
   push:
@@ -18,13 +18,13 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Restore
-        run: msbuild Moughoof.csproj /t:Restore
+        run: msbuild .csproj /t:Restore
 
       - name: Build
-        run: msbuild Moughoof.csproj /p:Configuration=Release
+        run: msbuild .csproj /p:Configuration=Release
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Moughoof-win-x64
+          name: pasAvand-win-x64
           path: bin/Release/
