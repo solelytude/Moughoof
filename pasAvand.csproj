@@ -8,10 +8,12 @@
     <RootNamespace>Moughoof</RootNamespace>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="DefaultDB.txt">
       <LogicalName>Moughoof.DefaultDB.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icon.ico">
+      <LogicalName>Moughoof.AppIcon.ico</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>
