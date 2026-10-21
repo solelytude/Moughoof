@@ -1,13 +1,11 @@
 
-/* ======================== pasAvand V1.1 ======================
-   Layout-only updates:
-   - Correct client-area sizing to preserve the right-side inner margin
-   - Center both result columns; pronunciation left, Persian right
-   - Reference labels fit their text
-   - Form width reduced by 20% (460 to 368 client pixels)
-   - Persian result text increased to 12 pt and bold
-   - Default form height reduced to 650
-   All existing functionality preserved.
+/* ======================== pasAvand V1.1 ========================
+   Layout update based on MainForm_pasAvand_V1.8.2:
+   - Form width reduced by moving only the right edge left by 20%
+   - Input box and results list shortened from the right side
+   - Right-side checkboxes shifted left without resizing
+   - Search/status/export right edges aligned as requested
+   All other controls and functionality preserved.
    =============================================================== */
 
 using System;
@@ -234,11 +232,10 @@ namespace Moughoof
 
             fallbackFont = new Font(Font.FontFamily, 9f);
 
-            // PERSIAN LIST FONT SIZE: change 12f to adjust the Persian list text.
             preferredWordFont = CreateFontSafely(
                 selectedFont,
-                12f,
-                FontStyle.Bold,
+                11f,
+                FontStyle.Regular,
                 fallbackFont);
 
             preferredInputFont = CreateFontSafely(
@@ -294,8 +291,8 @@ namespace Moughoof
 
             inputPanel = new Panel
             {
-                Location = new Point(8, 8),
-                Size = new Size(354, 95),
+                Location = new Point(10, 8),
+                Size = new Size(351, 95),
                 BackColor = backgroundColor
             };
 
@@ -304,7 +301,7 @@ namespace Moughoof
             inputBox = new TextBox
             {
                 Location = new Point(0, 0),
-                Size = new Size(354, 31),
+                Size = new Size(351, 31),
 
                 Font = preferredInputFont,
 
@@ -321,7 +318,7 @@ namespace Moughoof
             pronunciationLabel = new Label
             {
                 Location = new Point(0, 32),
-                Size = new Size(204, 20),
+                Size = new Size(255, 20),
 
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -337,8 +334,8 @@ namespace Moughoof
             // SEARCH BEHAVIOR OPTIONS — unchecked by default.
             geminationCheckBox = new CheckBox
             {
-                Location = new Point(207, 32),
-                Size = new Size(83, 20),
+                Location = new Point(171, 32),
+                Size = new Size(91, 20),
                 Text = "Gemination",
                 AutoSize = false,
                 Checked = false,
@@ -353,14 +350,14 @@ namespace Moughoof
 
             irrelevantCheckBox = new CheckBox
             {
-                Location = new Point(291, 32),
-                Size = new Size(63, 20),
+                Location = new Point(262, 32),
+                Size = new Size(89, 20),
                 Text = "Irrelevant",
                 AutoSize = false,
                 Checked = false,
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 8f),
+                Font = new Font("Segoe UI", 8.5f),
                 TextAlign = ContentAlignment.MiddleLeft,
                 UseVisualStyleBackColor = false
             };
@@ -380,7 +377,7 @@ namespace Moughoof
             matchOptionsPanel = new Panel
             {
                 Location = new Point(0, 59),
-                Size = new Size(354, 30),
+                Size = new Size(351, 30),
                 BackColor = backgroundColor
             };
 
@@ -389,7 +386,7 @@ namespace Moughoof
             matchLabel = new Label
             {
                 Location = new Point(0, 0),
-                Size = new Size(40, 28),
+                Size = new Size(50, 28),
 
                 Text = "MATCH",
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -402,8 +399,8 @@ namespace Moughoof
 
             firstRadio = new RadioButton
             {
-                Location = new Point(44, 2),
-                Size = new Size(50, 24),
+                Location = new Point(55, 2),
+                Size = new Size(62, 24),
 
                 Text = "FIRST",
                 ForeColor = Color.White,
@@ -414,8 +411,8 @@ namespace Moughoof
 
             lastRadio = new RadioButton
             {
-                Location = new Point(94, 2),
-                Size = new Size(46, 24),
+                Location = new Point(118, 2),
+                Size = new Size(58, 24),
 
                 Text = "LAST",
                 ForeColor = Color.White,
@@ -427,8 +424,8 @@ namespace Moughoof
 
             matchCountBox = new NumericUpDown
             {
-                Location = new Point(145, 2),
-                Size = new Size(38, 25),
+                Location = new Point(181, 2),
+                Size = new Size(48, 25),
 
                 Minimum = 1,
                 Maximum = 50,
@@ -441,8 +438,8 @@ namespace Moughoof
 
             searchButton = new Button
             {
-                Location = new Point(294, 0),
-                Size = new Size(61, 28),
+                Location = new Point(275, 0),
+                Size = new Size(76, 28),
 
                 Text = "SEARCH",
 
@@ -460,8 +457,8 @@ namespace Moughoof
 
             Panel divider = new Panel
             {
-                Location = new Point(8, 105),
-                Size = new Size(354, 1),
+                Location = new Point(10, 105),
+                Size = new Size(351, 1),
                 BackColor = Color.FromArgb(75, 75, 75)
             };
 
@@ -471,8 +468,8 @@ namespace Moughoof
 
             outputPanel = new Panel
             {
-                Location = new Point(8, 109),
-                Size = new Size(354, 488),
+                Location = new Point(10, 109),
+                Size = new Size(351, 488),
 
                 Anchor =
                     AnchorStyles.Top |
@@ -490,7 +487,7 @@ namespace Moughoof
             sortOptionsPanel = new Panel
             {
                 Location = new Point(0, 0),
-                Size = new Size(354, 28),
+                Size = new Size(351, 28),
                 BackColor = backgroundColor
             };
 
@@ -499,7 +496,7 @@ namespace Moughoof
             sortLabel = new Label
             {
                 Location = new Point(0, 0),
-                Size = new Size(40, 26),
+                Size = new Size(50, 26),
 
                 Text = "SORT",
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -512,8 +509,8 @@ namespace Moughoof
 
             lengthRadio = new RadioButton
             {
-                Location = new Point(44, 1),
-                Size = new Size(52, 24),
+                Location = new Point(55, 1),
+                Size = new Size(65, 24),
 
                 Text = "LENGTH",
                 ForeColor = Color.White,
@@ -525,8 +522,8 @@ namespace Moughoof
 
             alphabetRadio = new RadioButton
             {
-                Location = new Point(94, 1),
-                Size = new Size(84, 24),
+                Location = new Point(118, 1),
+                Size = new Size(105, 24),
 
                 Text = "ALPHABET",
                 ForeColor = Color.White,
@@ -538,8 +535,8 @@ namespace Moughoof
 
             statusLabel = new Label
             {
-                Location = new Point(200, 1),
-                Size = new Size(154, 25),
+                Location = new Point(158, 1),
+                Size = new Size(193, 25),
 
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -557,7 +554,7 @@ namespace Moughoof
             resultsListBox = new ListBox
             {
                 Location = new Point(0, 30),
-                Size = new Size(354, 458),
+                Size = new Size(351, 458),
 
                 Anchor =
                     AnchorStyles.Top |
@@ -571,7 +568,7 @@ namespace Moughoof
                 BorderStyle = BorderStyle.FixedSingle,
 
                 DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 30,
+                ItemHeight = 27,
                 IntegralHeight = false,
 
                 Font = preferredWordFont,
@@ -586,7 +583,7 @@ namespace Moughoof
 
             referenceLabel = new Label
             {
-                Location = new Point(8, 601),
+                Location = new Point(10, 601),
 
                 AutoSize = true,
 
@@ -615,7 +612,7 @@ namespace Moughoof
 
             refreshReferenceLabel = new Label
             {
-                Location = new Point(8, 625),
+                Location = new Point(10, 625),
 
                 AutoSize = true,
 
@@ -645,8 +642,8 @@ namespace Moughoof
 
             exportButton = new Button
             {
-                Location = new Point(298, 611),
-                Size = new Size(64, 28),
+                Location = new Point(281, 611),
+                Size = new Size(80, 28),
 
                 Anchor =
                     AnchorStyles.Bottom |
@@ -1690,11 +1687,11 @@ private void ResultsListBox_DrawItem(
         e.Bounds.Width - persianWidth - 6,
         e.Bounds.Height);
 
-    // Persian list font size/style: 12f, bold.
+    // Keep the currently selected Persian font.
     using (Font persianFont = new Font(
-        preferredWordFont.FontFamily,
-        12f,
-        FontStyle.Bold))
+        inputBox.Font.FontFamily,
+        11f,
+        FontStyle.Regular))
     {
         TextRenderer.DrawText(
             e.Graphics,
