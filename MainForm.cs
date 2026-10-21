@@ -1,5 +1,5 @@
 
-/* ======================== MOUGHOOf V1.7.2 ======================
+/* ======================== MOUGHOOf V1.8.2 ======================
    Layout-only updates:
    - Correct client-area sizing to preserve the right-side inner margin
    - Center both result columns; pronunciation left, Persian right
