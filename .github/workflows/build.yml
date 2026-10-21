@@ -18,10 +18,10 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Restore
-        run: msbuild .csproj /t:Restore
+        run: msbuild pasAvand.csproj /t:Restore
 
       - name: Build
-        run: msbuild .csproj /p:Configuration=Release
+        run: msbuild pasAvand.csproj /p:Configuration=Release
 
       - name: Upload
         uses: actions/upload-artifact@v4
