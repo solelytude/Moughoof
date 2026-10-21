@@ -232,10 +232,11 @@ namespace Moughoof
 
             fallbackFont = new Font(Font.FontFamily, 9f);
 
+            // PERSIAN RESULTS FONT: size 12, bold.
             preferredWordFont = CreateFontSafely(
                 selectedFont,
-                11f,
-                FontStyle.Regular,
+                12f,
+                FontStyle.Bold,
                 fallbackFont);
 
             preferredInputFont = CreateFontSafely(
@@ -318,7 +319,8 @@ namespace Moughoof
             pronunciationLabel = new Label
             {
                 Location = new Point(0, 32),
-                Size = new Size(255, 20),
+                // Keep this label clear of the two checkboxes to its right.
+                Size = new Size(165, 20),
 
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -334,6 +336,7 @@ namespace Moughoof
             // SEARCH BEHAVIOR OPTIONS — unchecked by default.
             geminationCheckBox = new CheckBox
             {
+                // Immediately to the left of Irrelevant; both stay on the input's right edge.
                 Location = new Point(171, 32),
                 Size = new Size(91, 20),
                 Text = "Gemination",
@@ -347,6 +350,7 @@ namespace Moughoof
             };
 
             inputPanel.Controls.Add(geminationCheckBox);
+            geminationCheckBox.BringToFront();
 
             irrelevantCheckBox = new CheckBox
             {
@@ -363,6 +367,7 @@ namespace Moughoof
             };
 
             inputPanel.Controls.Add(irrelevantCheckBox);
+            irrelevantCheckBox.BringToFront();
 
             inputWarningToolTip = new ToolTip
             {
@@ -568,7 +573,7 @@ namespace Moughoof
                 BorderStyle = BorderStyle.FixedSingle,
 
                 DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 27,
+                ItemHeight = 30,
                 IntegralHeight = false,
 
                 Font = preferredWordFont,
@@ -1687,11 +1692,11 @@ private void ResultsListBox_DrawItem(
         e.Bounds.Width - persianWidth - 6,
         e.Bounds.Height);
 
-    // Keep the currently selected Persian font.
+    // Persian results font: 12 pt, bold.
     using (Font persianFont = new Font(
-        inputBox.Font.FontFamily,
-        11f,
-        FontStyle.Regular))
+        preferredWordFont.FontFamily,
+        12f,
+        FontStyle.Bold))
     {
         TextRenderer.DrawText(
             e.Graphics,
